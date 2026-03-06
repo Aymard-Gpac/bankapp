@@ -2,8 +2,10 @@ import { SignUpParams } from "@/types";
 import { LoginUser } from "@/types";
 
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
+  
 function createStudentAccount(data: SignUpParams) {
   return {
     first_name: data.firstName,

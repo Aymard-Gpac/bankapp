@@ -1,5 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
+  
 async function safeJson(res: Response) {
   const text = await res.text();
   try { return text ? JSON.parse(text) : null; } catch { return null; }

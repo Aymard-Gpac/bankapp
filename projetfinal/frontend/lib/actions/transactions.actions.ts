@@ -20,8 +20,10 @@ export type InternalTransferPayload = {
 type Ok<T> = { ok: true; data: T };
 type Err = { ok: false; error: string };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
+  
 async function safeJson(res: Response) {
   const text = await res.text();
   try {

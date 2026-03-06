@@ -1,7 +1,10 @@
 import { Account, SignUpParams } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
+  
 function mapClientPayload(data: SignUpParams) {
   return {
     first_name: data.firstName,

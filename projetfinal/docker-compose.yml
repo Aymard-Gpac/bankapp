@@ -11,8 +11,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
+      - API_URL_INTERNAL=http://backend:5000
       - NEXT_PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend

@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 
 const API_URL =
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_URL_INTERNAL ||
   "http://localhost:5000";
 
 export async function getClientAccountsServer(clientId: number) {
