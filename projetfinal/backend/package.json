@@ -1,0 +1,33 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:unit": "cross-env NODE_ENV=test NODE_OPTIONS=\"--experimental-vm-modules --require=dotenv/config\" dotenv_config_path=.env.test jest tests/unit",
+    "test:coverage": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/unit --coverage",
+    "dev": "node --env-file=.env src/server.js",
+    "docs": "jsdoc -c jsdoc.config.json"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
+  "type": "module",
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.3.1",
+    "jest": "^30.2.0",
+    "jsdoc": "^4.0.5",
+    "supertest": "^7.2.2"
+  }
+}

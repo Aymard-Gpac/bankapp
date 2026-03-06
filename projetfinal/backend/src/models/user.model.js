@@ -1,0 +1,184 @@
+/**
+ * Module d'accès aux données des utilisateurs
+ * @module models/user.model
+ * @requires ../config/database
+ */
+
+import db from '../config/database.js';
+
+/**
+ * DAO (Data Access Object) pour la gestion des utilisateurs
+ * @namespace UserDAO
+ * @description Fournit les méthodes d'accès à la table 'users' pour tous les types d'utilisateurs
+ * (clients, étudiants, administrateurs, etc.)
+ */
+export const UserDAO = {
+
+  /**
+   * Recherche un utilisateur par son adresse courriel
+   * @async
+   * @param {string} email - Adresse courriel à rechercher
+   * @returns {Promise<Object|null>} L'utilisateur trouvé ou null si inexistant
+   * @returns {number} return.id - ID unique de l'utilisateur
+   * @returns {string} return.first_name - Prénom
+   * @returns {string} return.last_name - Nom de famille
+   * @returns {string} return.address - Adresse postale
+   * @returns {string} return.city - Ville
+   * @returns {string} return.state - Province/État
+   * @returns {string} return.postal_code - Code postal
+   * @returns {string} return.date_of_birth - Date de naissance (YYYY-MM-DD)
+   * @returns {string} return.ssn - Numéro de sécurité sociale (NAS)
+   * @returns {string} return.email - Adresse courriel
+   * @returns {string} return.password - Mot de passe hashé (bcrypt)
+   * @returns {string} return.role - Rôle de l'utilisateur (client, student, admin, etc.)
+   * @returns {string} return.created_at - Date de création du compte
+   * @throws {Error} Si la requête SQL échoue
+   * 
+   * @example
+   * // Rechercher un utilisateur par email
+   * const user = await UserDAO.findByEmail("jean.dupont@email.com");
+   * 
+   * if (user) {
+   *   console.log(`Utilisateur trouvé: ${user.first_name} ${user.last_name}`);
+   *   console.log(`Rôle: ${user.role}`);
+   * } else {
+   *   console.log("Aucun utilisateur avec cet email");
+   * }
+   * 
+   * @note
+   * Utilisé principalement pour:
+   * - Vérifier si un email est déjà pris lors de l'inscription
+   * - Authentifier un utilisateur lors de la connexion
+   */
+  findByEmail(email) {
+    return db.get(
+      "SELECT * FROM users WHERE email = ?",
+      email
+    );
+  },
+
+  /**
+   * Recherche un utilisateur par son ID
+   * @async
+   * @param {number} id - ID de l'utilisateur à rechercher
+   * @returns {Promise<Object|null>} L'utilisateur trouvé ou null si inexistant
+   * @returns {number} return.id - ID unique de l'utilisateur
+   * @returns {string} return.first_name - Prénom
+   * @returns {string} return.last_name - Nom de famille
+   * @returns {string} return.address - Adresse postale
+   * @returns {string} return.city - Ville
+   * @returns {string} return.state - Province/État
+   * @returns {string} return.postal_code - Code postal
+   * @returns {string} return.date_of_birth - Date de naissance
+   * @returns {string} return.ssn - Numéro de sécurité sociale
+   * @returns {string} return.email - Adresse courriel
+   * @returns {string} return.password - Mot de passe hashé
+   * @returns {string} return.role - Rôle de l'utilisateur
+   * @returns {string} return.created_at - Date de création
+   * @throws {Error} Si la requête SQL échoue
+   * 
+   * @example
+   * // Récupérer un utilisateur par son ID
+   * const user = await UserDAO.findById(123);
+   * 
+   * if (user) {
+   *   console.log(`Utilisateur: ${user.email} (${user.role})`);
+   * } else {
+   *   console.log("Utilisateur non trouvé");
+   * }
+   * 
+   * @note
+   * Utilisé pour:
+   * - Récupérer le profil de l'utilisateur connecté
+   * - Vérifier l'existence d'un utilisateur
+   * - Obtenir les détails d'un utilisateur spécifique
+   */
+  findById(id) {
+    return db.get(
+      "SELECT * FROM users WHERE id = ?",
+      id
+    );
+  },
+
+  /**
+   * Crée un nouvel utilisateur
+   * @async
+   * @param {Object} user - Données de l'utilisateur à créer
+   * @param {string} user.first_name - Prénom (obligatoire)
+   * @param {string} user.last_name - Nom de famille (obligatoire)
+   * @param {string} user.address - Adresse postale (obligatoire)
+   * @param {string} user.city - Ville (obligatoire)
+   * @param {string} user.state - Province/État (obligatoire)
+   * @param {string} user.postal_code - Code postal (obligatoire)
+   * @param {string} user.date_of_birth - Date de naissance (obligatoire)
+   * @param {string} user.ssn - Numéro de sécurité sociale (obligatoire pour certains rôles)
+   * @param {string} user.email - Adresse courriel (obligatoire, unique)
+   * @param {string} user.password - Mot de passe hashé (obligatoire, déjà hashé par bcrypt)
+   * @param {string} user.role - Rôle de l'utilisateur (obligatoire: "client", "student", "admin", etc.)
+   * @returns {Promise<Object>} Résultat de l'insertion
+   * @returns {number} return.lastID - ID du nouvel utilisateur créé
+   * @returns {number} return.changes - Nombre de lignes insérées (normalement 1)
+   * @throws {Error} Si la requête SQL échoue (notamment si l'email existe déjà)
+   * 
+   * @example
+   * // Créer un nouvel étudiant
+   * const result = await UserDAO.create({
+   *   first_name: "Marie",
+   *   last_name: "Lambert",
+   *   address: "456 rue de l'Université",
+   *   city: "Québec",
+   *   state: "QC",
+   *   postal_code: "G1V 0A6",
+   *   date_of_birth: "2000-05-15",
+   *   ssn: "987-65-4321",
+   *   email: "marie.lambert@email.com",
+   *   password: "$2b$10$X7VYzZ8xQ1w2E3r4T5y6U7i8O9p0Aa1s2D3f4G5h6J7k8L9",
+   *   role: "student"
+   * });
+   * 
+   * console.log(`Utilisateur créé avec l'ID: ${result.lastID}`);
+   * 
+   * @example
+   * // Créer un nouveau client
+   * const result = await UserDAO.create({
+   *   first_name: "Jean",
+   *   last_name: "Dupont",
+   *   address: "123 rue Principale",
+   *   city: "Montréal",
+   *   state: "QC",
+   *   postal_code: "H1H 1H1",
+   *   date_of_birth: "1990-01-01",
+   *   ssn: "123-45-6789",
+   *   email: "jean.dupont@email.com",
+   *   password: "$2b$10$hashedpassword...",
+   *   role: "client"
+   * });
+   * 
+   * @note
+   * Points importants:
+   * - Le mot de passe DOIT être déjà hashé par le service avant d'arriver ici
+   * - Le rôle détermine les permissions et l'accès aux fonctionnalités
+   * - L'email doit être unique (contrainte de base de données)
+   * - Pour les clients, le SSN est obligatoire; pour les étudiants, optionnel
+   */
+  create(user) {
+    return db.run(
+      `INSERT INTO users
+        (first_name, last_name, address, city, state,
+         postal_code, date_of_birth, ssn, email, password, role)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      user.first_name,
+      user.last_name,
+      user.address,
+      user.city,
+      user.state,
+      user.postal_code,
+      user.date_of_birth,
+      user.ssn,
+      user.email,
+      user.password,
+      user.role
+    );
+  }
+
+};

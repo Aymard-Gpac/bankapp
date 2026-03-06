@@ -1,0 +1,96 @@
+import { existsSync } from "node:fs";
+import { seedBeneficiariesIfNotExists, seedUsersIfNotExists } from "./seedClients.js";
+import db, { dbPath } from "./database.js";
+
+// ✅ Nouveau fichier ?
+const IS_NEW = !existsSync(dbPath);
+
+
+export async function initDB() {
+  // Toujours activer les FK
+  await db.exec(`PRAGMA foreign_keys = ON;`);
+
+  // Toujours s'assurer que les tables existent (même si DB existe déjà)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      address TEXT NOT NULL,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      postal_code TEXT NOT NULL,
+      date_of_birth TEXT NOT NULL,
+      ssn TEXT,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      account_number TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL,
+      balance REAL DEFAULT 0,
+      currency TEXT DEFAULT 'CAD',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      amount REAL NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_account_id INTEGER NOT NULL,
+      to_account_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (from_account_id) REFERENCES accounts(id),
+      FOREIGN KEY (to_account_id) REFERENCES accounts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS beneficiaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      account_number TEXT NOT NULL,
+      bank_name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      card_number TEXT UNIQUE NOT NULL,
+      expiry_date TEXT NOT NULL,
+      cvv TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id)
+    );
+  `);
+
+  if (IS_NEW) {
+    console.log("✅ DB initialized:", dbPath);
+  } else {
+    console.log("✅ DB ready:", dbPath);
+  }
+
+  await seedUsersIfNotExists();
+  console.log("🌱 Users seed done");
+  await seedBeneficiariesIfNotExists();
+  console.log("🌱 Beneficiaries seed done")
+}
+
+export default db;

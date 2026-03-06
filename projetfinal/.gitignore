@@ -1,0 +1,76 @@
+# =====================
+# Global
+# =====================
+node_modules/
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =====================
+# Backend (Node + SQLite)
+# =====================
+backend/node_modules/
+backend/coverage/
+backend/docs/
+backend/*.sqlite
+backend/*.sqlite3
+backend/*.db
+backend/dist/
+backend/build/
+backend/package-lock.json
+
+# =====================
+# Frontend (Next.js)
+# =====================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/.vercel
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/.env.local
+
+# =====================
+# Tests
+# =====================
+coverage/
+.nyc_output/
+jest.config.js
+*.test.js
+*.spec.js
+
+# =====================
+# OS / Editor
+# =====================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+~$*
+
+# =====================
+# Logs
+# =====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.pid
+*.seed
+*.pid.lock
+
+# =====================
+# Temp files
+# =====================
+tmp/
+temp/
+*.tmp
+*.temp

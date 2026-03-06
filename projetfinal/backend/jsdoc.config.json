@@ -1,0 +1,39 @@
+{
+  "source": {
+    "include": [
+      "src/controllers",
+      "src/services",
+      "src/models",
+      "src/middlewares",
+      "src/routes"
+    ],
+    "includePattern": ".js$",
+    "excludePattern": "(node_modules/|docs|tests|coverage)"
+  },
+  "opts": {
+    "destination": "./docs",
+    "recurse": true,
+    "verbose": true,
+    "encoding": "utf8",
+    "private": false,
+    "lenient": true,
+    "template": "node_modules/jsdoc/templates/default"
+  },
+  "plugins": [
+    "plugins/markdown"
+  ],
+  "templates": {
+    "cleverLinks": true,
+    "monospaceLinks": true,
+    "default": {
+      "outputSourceFiles": true,
+      "includeDate": true,
+      "useLongnameInNav": true
+    }
+  },
+  "metadata": {
+    "title": "API Système Bancaire",
+    "description": "Documentation complète de l'API",
+    "version": "1.0.0"
+  }
+}
