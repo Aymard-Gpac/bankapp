@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/transfer.controller.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: controllers/transfer.controller.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>
+import { TransferService } from "../services/transfer.service.js";
+
+/**
+ * Objet contrôleur regroupant les méthodes de transfert
+ */
+export const TransferController = {
+
+  /**
+   * Crée un transfert Interac entre deux clients
+   * @async
+   * @function createInteracTransfer
+   * @param {Object} req - Requête Express
+   * @param {Object} req.user - Utilisateur authentifié
+   * @param {number} req.user.id - ID du client connecté
+   * @param {Object} req.body - Données du transfert
+   * @param {number|string} req.body.fromAccountId - Compte source
+   * @param {number|string} req.body.toClientId - Client destinataire
+   * @param {number|string} req.body.amount - Montant à transférer
+   * @param {string} [req.body.description] - Message optionnel
+   * @param {Object} res - Réponse Express
+   * @returns {Promise&lt;Object>} Réponse HTTP
+   *
+   * @example
+   * // Requête POST /api/transfers/interac
+   * // Body:
+   * // {
+   * //   "fromAccountId": 1,
+   * //   "toClientId": 12,
+   * //   "amount": 100,
+   * //   "description": "Loyer"
+   * // }
+   *
+   * // Réponse succès (201)
+   * // {
+   * //   "transactionId": 55,
+   * //   "message": "Interac transfer successful"
+   * // }
+   */
+  async createInteracTransfer(req, res) {
+
+    // Construction du payload à envoyer au service
+    const payload = {
+      userId: req.user?.id,
+      fromAccountId: req.body.fromAccountId ?? req.body.from_account_id,
+      toClientId: req.body.toClientId ?? req.body.to_client_id,
+      amount: Number(req.body.amount),
+      description: req.body.description,
+    };
+
+    // Appel au service métier
+    const r = await TransferService.createInteracTransfer(payload);
+
+    // Retour de la réponse HTTP
+    return res
+      .status(r.status)
+      .json(r.ok ? r.data : { error: r.error, details: r.details });
+  },
+
+  /**
+   * Crée un transfert interne entre deux comptes appartenant au client
+   * @async
+   * @function createInternalTransfer
+   * @param {Object} req - Requête Express
+   * @param {Object} req.user - Utilisateur authentifié
+   * @param {number} req.user.id - ID du client connecté
+   * @param {Object} req.body - Données du transfert
+   * @param {number|string} req.body.fromAccountId - Compte source
+   * @param {number|string} req.body.toAccountId - Compte destinataire
+   * @param {number|string} req.body.amount - Montant du transfert
+   * @param {string} [req.body.date] - Date du transfert
+   * @param {string} [req.body.frequency] - Fréquence (ex: once, monthly)
+   * @param {string} [req.body.description] - Description optionnelle
+   * @param {Object} res - Réponse Express
+   * @returns {Promise&lt;Object>} Réponse HTTP
+   *
+   * @example
+   * // POST /api/transfers/internal
+   * // Body:
+   * // {
+   * //   "fromAccountId": 1,
+   * //   "toAccountId": 2,
+   * //   "amount": 200
+   * // }
+   */
+  async createInternalTransfer(req, res) {
+
+    const { fromAccountId, toAccountId, amount, date, frequency, description } =
+      req.body;
+
+    // Appel au service métier
+    const result = await TransferService.createInternalTransfer({
+      userId: req.user.id,
+      fromAccountId: Number(fromAccountId),
+      toAccountId: Number(toAccountId),
+      amount: Number(amount),
+      date,
+      frequency,
+      description,
+    });
+
+    // Réponse HTTP
+    return res
+      .status(result.status)
+      .json(result.ok ? { data: result.data } : { error: result.error });
+  },
+};
+
+/**
+ * Effectue le paiement d'une facture vers un bénéficiaire
+ * @async
+ * @function payBill
+ * @param {Object} req - Requête Express
+ * @param {Object} req.user - Utilisateur authentifié
+ * @param {number} req.user.id - ID du client connecté
+ * @param {Object} req.body - Données du paiement
+ * @param {number|string} req.body.fromAccountId - Compte source
+ * @param {number|string} req.body.beneficiaryId - Bénéficiaire à payer
+ * @param {number|string} req.body.amount - Montant du paiement
+ * @param {string} [req.body.date] - Date prévue du paiement
+ * @param {string} [req.body.frequency] - Fréquence (ex: once)
+ * @param {string} [req.body.description] - Description optionnelle
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ *
+ * @example
+ * // POST /api/transfers/bill
+ * // Body:
+ * // {
+ * //   "fromAccountId": 1,
+ * //   "beneficiaryId": 5,
+ * //   "amount": 45,
+ * //   "description": "Internet"
+ * // }
+ *
+ * // Réponse succès (201)
+ * // {
+ * //   "data": {
+ * //     "transactionId": 88,
+ * //     "message": "Bill paid successfully"
+ * //   }
+ * // }
+ */
+export const payBill = async (req, res) => {
+
+  const { fromAccountId, beneficiaryId, amount, date, frequency, description } =
+    req.body;
+
+  // Appel au service métier
+  const result = await TransferService.payBill({
+    userId: req.user.id,
+    fromAccountId: Number(fromAccountId),
+    beneficiaryId: Number(beneficiaryId),
+    amount: Number(amount),
+    date,
+    frequency,
+    description,
+  });
+
+  // Réponse HTTP
+  return res
+    .status(result.status)
+    .json(result.ok ? { data: result.data } : { error: result.error });
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/client.controller.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: controllers/client.controller.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contrôleur de gestion des clients
+ * @module controllers/client.controller
+ * @requires ../services/client.service
+ */
+
+import { ClientService } from "../services/client.service.js";
+
+/**
+ * Crée un nouveau client avec ses comptes bancaires par défaut
+ * @async
+ * @function createClient
+ * @param {Object} req - Requête Express
+ * @param {Object} req.body - Données du client à créer
+ * @param {string} req.body.first_name - Prénom (obligatoire)
+ * @param {string} req.body.last_name - Nom (obligatoire)
+ * @param {string} req.body.email - Email (obligatoire, unique)
+ * @param {string} [req.body.password] - Mot de passe (généré si absent)
+ * @param {string} [req.body.address] - Adresse
+ * @param {string} [req.body.city] - Ville
+ * @param {string} [req.body.state] - Province
+ * @param {string} [req.body.postal_code] - Code postal
+ * @param {string} [req.body.date_of_birth] - Date de naissance
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête POST /api/clients
+ * // Body: {
+ * //   "first_name": "Jean",
+ * //   "last_name": "Dupont",
+ * //   "email": "jean@email.com",
+ * //   "address": "123 rue Principale",
+ * //   "city": "Montréal",
+ * //   "state": "QC",
+ * //   "postal_code": "H1H 1H1"
+ * // }
+ * 
+ * // Réponse succès (201)
+ * // {
+ * //   "userId": 123,
+ * //   "message": "Client created + 3 accounts created"
+ * // }
+ * 
+ * // Réponse erreur (400)
+ * // {
+ * //   "error": "first_name, last_name, email are required"
+ * // }
+ */
+export const createClient = async (req, res) => {
+  const r = await ClientService.createClientWithDefaultAccounts(req.body);
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};
+
+/**
+ * Liste tous les clients avec pagination
+ * @async
+ * @function listClients
+ * @param {Object} req - Requête Express
+ * @param {Object} req.query - Paramètres de pagination
+ * @param {string} [req.query.limit=50] - Nombre maximum de résultats
+ * @param {string} [req.query.offset=0] - Offset pour la pagination
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête GET /api/clients?limit=20&amp;offset=40
+ * 
+ * // Réponse succès (200)
+ * // [
+ * //   { "id": 123, "first_name": "Jean", "last_name": "Dupont", "email": "jean@email.com" },
+ * //   { "id": 124, "first_name": "Marie", "last_name": "Lambert", "email": "marie@email.com" }
+ * // ]
+ * 
+ * @note
+ * La limite est automatiquement plafonnée à 100 par le service
+ */
+export const listClients = async (req, res) => {
+  const r = await ClientService.list(req.query);
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};
+
+/**
+ * Récupère un client par son ID
+ * @async
+ * @function getClient
+ * @param {Object} req - Requête Express
+ * @param {Object} req.params - Paramètres de route
+ * @param {string} req.params.id - ID du client
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête GET /api/clients/123
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "id": 123,
+ * //   "first_name": "Jean",
+ * //   "last_name": "Dupont",
+ * //   "email": "jean@email.com",
+ * //   "address": "123 rue Principale",
+ * //   "city": "Montréal",
+ * //   "state": "QC",
+ * //   "postal_code": "H1H 1H1",
+ * //   "date_of_birth": "1990-01-01",
+ * //   "role": "client",
+ * //   "created_at": "2024-01-01T00:00:00Z"
+ * // }
+ * 
+ * // Réponse erreur (404)
+ * // {
+ * //   "error": "Client not found"
+ * // }
+ */
+export const getClient = async (req, res) => {
+<<<<<<< HEAD
+  const id = Number(req.params.id);
+
+  // Sécurité: un client ne peut lire QUE son propre profil
+  if (req.user?.role === "client" &amp;&amp; req.user.id !== id) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const r = await ClientService.get(id);
+=======
+  const r = await ClientService.get(Number(req.params.id));
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};
+
+/**
+ * Met à jour un client existant
+ * @async
+ * @function updateClient
+ * @param {Object} req - Requête Express
+ * @param {Object} req.params - Paramètres de route
+ * @param {string} req.params.id - ID du client à modifier
+ * @param {Object} req.body - Nouvelles données (partielles)
+ * @param {string} [req.body.first_name] - Nouveau prénom
+ * @param {string} [req.body.last_name] - Nouveau nom
+ * @param {string} [req.body.email] - Nouvel email
+ * @param {string} [req.body.address] - Nouvelle adresse
+ * @param {string} [req.body.city] - Nouvelle ville
+ * @param {string} [req.body.state] - Nouvelle province
+ * @param {string} [req.body.postal_code] - Nouveau code postal
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête PUT /api/clients/123
+ * // Body: {
+ * //   "first_name": "Jean-Pierre",
+ * //   "address": "456 Nouvelle Rue"
+ * // }
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "message": "Updated"
+ * // }
+ * 
+ * // Réponse erreur (409) - email déjà utilisé
+ * // {
+ * //   "error": "Email already used"
+ * // }
+ */
+export const updateClient = async (req, res) => {
+  const r = await ClientService.update(Number(req.params.id), req.body);
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};
+
+/**
+ * Supprime un client
+ * @async
+ * @function deleteClient
+ * @param {Object} req - Requête Express
+ * @param {Object} req.params - Paramètres de route
+ * @param {string} req.params.id - ID du client à supprimer
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête DELETE /api/clients/123
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "message": "Deleted"
+ * // }
+ * 
+ * // Réponse erreur (404)
+ * // {
+ * //   "error": "Client not found"
+ * // }
+ * 
+ * @note
+ * La suppression peut échouer si le client a des comptes associés
+ * (contrainte de clé étrangère) → erreur 500
+ */
+export const deleteClient = async (req, res) => {
+  const r = await ClientService.remove(Number(req.params.id));
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};
+
+/**
+ * Récupère le client courant (pour le contexte d'authentification)
+ * @async
+ * @function getCurrentClient
+ * @param {Object} req - Requête Express
+ * @param {Object} req.params - Paramètres de route
+ * @param {string} req.params.clientId - ID du client connecté
+ * @param {Object} res - Réponse Express
+ * @param {Function} next - Middleware suivant (gestion d'erreurs)
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête GET /api/clients/current/123
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "id": 123,
+ * //   "first_name": "Jean",
+ * //   "last_name": "Dupont",
+ * //   "email": "jean@email.com",
+ * //   "role": "client",
+ * //   ...autres données
+ * // }
+ * 
+ * // Réponse erreur (400)
+ * // {
+ * //   "error": "Invalid clientId"
+ * // }
+ * 
+ * // Réponse erreur (404) - via le service
+ * // {
+ * //   "error": "Client not found"
+ * // }
+ * 
+ * @note
+ * Cette méthode est similaire à getClient mais lance des erreurs
+ * pour être cohérente avec le style des services d'authentification
+ */
+export const getCurrentClient = async (req, res, next) => {
+    try {
+      // Validation du paramètre clientId
+      const clientId = Number(req.params.clientId);
+      if (isNaN(clientId)) {
+        return res.status(400).json({ error: "Invalid clientId" });
+      }
+
+      // Appel au service (peut lancer une erreur)
+      const client = await ClientService.getCurrentClient(clientId);
+      res.json(client);
+    } catch (err) {
+      // Passer l'erreur au middleware de gestion d'erreurs
+      next(err);
+    }
+  };</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+<<<<<<< HEAD
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+=======
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul>
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</nav>
+
+<br class="clear">
+
+<footer>
+<<<<<<< HEAD
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+=======
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Feb 26 2026 13:12:25 GMT-0500 (heure normale de l’Est nord-américain)
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

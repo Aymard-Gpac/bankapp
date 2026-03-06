@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/client.service.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/client.service.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Service de gestion des clients
+ * @module services/client.service
+ * @requires ../config/database
+ * @requires bcrypt
+ * @requires ../models/client.model
+ * @requires ../models/user.model
+ * @requires ../models/bank.model
+ */
+
+import db from "../config/database.js";
+import bcrypt from "bcrypt";
+import { ClientDAO } from "../models/client.model.js";
+import { UserDAO } from "../models/user.model.js";
+import { AccountDAO } from "../models/bank.model.js";
+
+/**
+ * Génère un numéro de compte bancaire unique
+ * @private
+ * @param {string} type - Type de compte ("cheque", "epargne", "credit")
+ * @returns {string} Numéro de compte formaté
+ * @example
+ * generateAccountNumber("cheque") // "CHEQUE-1645832100000-123456"
+ */
+function generateAccountNumber(type) {
+  const rand = Math.floor(100000 + Math.random() * 900000);
+  return `${type.toUpperCase()}-${Date.now()}-${rand}`;
+}
+
+/**
+ * Service gérant les opérations liées aux clients
+ * @namespace ClientService
+ * @description Fournit toutes les fonctionnalités de gestion des clients :
+ * création avec comptes par défaut, liste, consultation, mise à jour, suppression
+ */
+export const ClientService = {
+  /**
+   * Crée un nouveau client avec ses 3 comptes bancaires par défaut
+   * @async
+   * @param {Object} data - Données du client à créer
+   * @param {string} data.first_name - Prénom (obligatoire)
+   * @param {string} data.last_name - Nom de famille (obligatoire)
+   * @param {string} data.email - Adresse courriel (obligatoire, unique)
+   * @param {string} [data.password] - Mot de passe (généré automatiquement si non fourni)
+   * @param {string} [data.address] - Adresse postale (optionnel, défaut: "")
+   * @param {string} [data.city] - Ville (optionnel, défaut: "")
+   * @param {string} [data.state] - Province/État (optionnel, défaut: "")
+   * @param {string} [data.postal_code] - Code postal (optionnel, défaut: "")
+   * @param {string} [data.date_of_birth] - Date de naissance (optionnel, défaut: "")
+   * @returns {Promise&lt;Object>} Résultat de la création
+   * @returns {boolean} return.ok - Succès de l'opération
+   * @returns {number} return.status - Code HTTP
+   * @returns {Object} return.data - Données de création (si succès)
+   * @returns {number} return.data.userId - ID du nouveau client
+   * @returns {string} return.data.message - Message de confirmation
+   * @returns {string} return.error - Message d'erreur (si échec)
+   * 
+   * @example
+   * // Création réussie d'un client
+   * const result = await ClientService.createClientWithDefaultAccounts({
+   *   first_name: "Jean",
+   *   last_name: "Dupont",
+   *   email: "jean.dupont@email.com",
+   *   address: "123 rue Principale",
+   *   city: "Montréal",
+   *   state: "QC",
+   *   postal_code: "H1H 1H1",
+   *   date_of_birth: "1990-01-01",
+   *   password: "Password123!" // optionnel
+   * });
+   * 
+   * if (result.ok) {
+   *   console.log(result.data.message); // "Client created + 3 accounts created"
+   *   console.log(`Client ID: ${result.data.userId}`);
+   * } else {
+   *   console.log(`Erreur ${result.status}: ${result.error}`);
+   * }
+   * 
+   * @example
+   * // Création avec mot de passe généré automatiquement
+   * const result = await ClientService.createClientWithDefaultAccounts({
+   *   first_name: "Marie",
+   *   last_name: "Lambert",
+   *   email: "marie@email.com"
+   *   // password non fourni → généré automatiquement
+   * });
+   * 
+   * @example
+   * // Erreur: email déjà existant
+   * const result = await ClientService.createClientWithDefaultAccounts({
+   *   first_name: "Pierre",
+   *   last_name: "Tremblay",
+   *   email: "existant@email.com" // déjà en BD
+   * });
+   * // result = { ok: false, status: 409, error: "Email already exists" }
+   * 
+   * @note
+   * Cette méthode est transactionnelle :
+   * - BEGIN au début
+   * - COMMIT si tout réussit
+   * - ROLLBACK en cas d'erreur
+   * 
+   * Les 3 comptes créés automatiquement sont :
+   * - Compte chèque (solde: 0)
+   * - Compte épargne (solde: 0)
+   * - Compte crédit (solde: 0)
+   */
+  async createClientWithDefaultAccounts(data) {
+    // Validation minimale des champs requis
+    if (!data?.first_name || !data?.last_name || !data?.email) {
+      return { ok: false, status: 400, error: "first_name, last_name, email are required" };
+    }
+
+    // Vérifier l'unicité de l'email
+    const existing = await UserDAO.findByEmail(data.email);
+    if (existing) {
+      return { ok: false, status: 409, error: "Email already exists" };
+    }
+
+    // Gestion du mot de passe : utiliser celui fourni ou en générer un
+    const plainPassword =
+      data.password &amp;&amp; String(data.password).trim().length > 0
+        ? String(data.password)
+        : Math.random().toString(36).slice(2, 10) + "A1!"; // Format: "x7k9m2p3A1!"
+
+    // Hacher le mot de passe
+    const hashed = await bcrypt.hash(plainPassword, 10);
+
+    // Normaliser les données (éviter les undefined)
+    const payload = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      password: hashed,
+      role: "client",
+      address: data.address ?? "",
+      city: data.city ?? "",
+      state: data.state ?? "",
+      postal_code: data.postal_code ?? "",
+      date_of_birth: data.date_of_birth ?? "",
+      ssn: "", // Les clients n'ont pas de NAS dans ce système
+    };
+
+    // Transaction pour garantir l'intégrité des données
+    try {
+      await db.exec("BEGIN");
+
+      // 1) Créer le client dans la table users
+      const r = await ClientDAO.create(payload);
+      const userId = r.lastID;
+
+      // 2) Créer les 3 comptes bancaires par défaut
+      const accountsToCreate = [
+        { type: "cheque", balance: 0 },
+        { type: "epargne", balance: 0 },
+        { type: "credit", balance: 0 },
+      ];
+
+      for (const a of accountsToCreate) {
+        await AccountDAO.create({
+          client_id: userId,          // Note: bank.model.js attend client_id
+          type: a.type,
+          balance: a.balance,
+          currency: "CAD",
+          account_number: generateAccountNumber(a.type),
+        });
+      }
+
+      await db.exec("COMMIT");
+
+      return {
+        ok: true,
+        status: 201,
+        data: { userId, message: "Client created + 3 accounts created" },
+      };
+    } catch (e) {
+      // En cas d'erreur, annuler toute la transaction
+      await db.exec("ROLLBACK");
+      console.error("createClientWithDefaultAccounts error:", e);
+      return { ok: false, status: 500, error: "Internal server error" };
+    }
+  },
+
+  /**
+   * Liste tous les clients avec pagination
+   * @async
+   * @param {Object} [query] - Paramètres de pagination
+   * @param {number} [query.limit=50] - Nombre maximum de résultats (max: 100)
+   * @param {number} [query.offset=0] - Offset pour la pagination
+   * @returns {Promise&lt;Object>} Liste paginée des clients
+   * @returns {boolean} return.ok - Succès de l'opération
+   * @returns {number} return.status - Code HTTP (200)
+   * @returns {Array} return.data - Liste des clients
+   * 
+   * @example
+   * // Liste des 50 premiers clients
+   * const result = await ClientService.list({});
+   * 
+   * @example
+   * // Liste avec pagination personnalisée
+   * const result = await ClientService.list({ limit: 20, offset: 40 });
+   * console.log(`Clients:`, result.data);
+   * 
+   * @note
+   * La limite est automatiquement plafonnée à 100
+   */
+  async list(query) {
+    const limit = Math.min(Number(query?.limit || 50), 100);
+    const offset = Number(query?.offset || 0);
+    const rows = await ClientDAO.findAll(limit, offset);
+    return { ok: true, status: 200, data: rows };
+  },
+
+  /**
+   * Récupère un client par son ID
+   * @async
+   * @param {number} id - ID du client
+   * @returns {Promise&lt;Object>} Résultat de la recherche
+   * @returns {boolean} return.ok - Succès de l'opération
+   * @returns {number} return.status - Code HTTP (200 ou 404)
+   * @returns {Object} return.data - Données du client (si trouvé)
+   * @returns {string} return.error - Message d'erreur (si non trouvé)
+   * 
+   * @example
+   * // Client trouvé
+   * const result = await ClientService.get(123);
+   * if (result.ok) {
+   *   console.log(result.data.first_name, result.data.last_name);
+   * }
+   * 
+   * @example
+   * // Client non trouvé
+   * const result = await ClientService.get(999);
+   * // result = { ok: false, status: 404, error: "Client not found" }
+   */
+  async get(id) {
+    const row = await ClientDAO.findById(id);
+    if (!row) return { ok: false, status: 404, error: "Client not found" };
+    return { ok: true, status: 200, data: row };
+  },
+
+  /**
+   * Met à jour les informations d'un client
+   * @async
+   * @param {number} id - ID du client à modifier
+   * @param {Object} patch - Nouvelles données (partielles ou complètes)
+   * @param {string} [patch.first_name] - Nouveau prénom
+   * @param {string} [patch.last_name] - Nouveau nom
+   * @param {string} [patch.email] - Nouvel email (vérification d'unicité)
+   * @param {string} [patch.address] - Nouvelle adresse
+   * @param {string} [patch.city] - Nouvelle ville
+   * @param {string} [patch.state] - Nouvelle province
+   * @param {string} [patch.postal_code] - Nouveau code postal
+   * @param {string} [patch.date_of_birth] - Nouvelle date de naissance
+   * @returns {Promise&lt;Object>} Résultat de la mise à jour
+   * @returns {boolean} return.ok - Succès de l'opération
+   * @returns {number} return.status - Code HTTP
+   * @returns {Object} return.data - Message de confirmation
+   * @returns {string} return.error - Message d'erreur (si échec)
+   * 
+   * @example
+   * // Mise à jour réussie
+   * const result = await ClientService.update(123, {
+   *   first_name: "Jean-Pierre",
+   *   address: "456 Nouvelle Rue",
+   *   phone: "514-999-9999"
+   * });
+   * // result = { ok: true, status: 200, data: { message: "Updated" } }
+   * 
+   * @example
+   * // Changement d'email avec conflit
+   * const result = await ClientService.update(123, {
+   *   email: "nouveau@email.com" // déjà utilisé
+   * });
+   * // result = { ok: false, status: 409, error: "Email already used" }
+   * 
+   * @example
+   * // Client non trouvé
+   * const result = await ClientService.update(999, { first_name: "Test" });
+   * // result = { ok: false, status: 404, error: "Client not found" }
+   */
+  async update(id, patch) {
+    const existing = await ClientDAO.findById(id);
+    if (!existing) return { ok: false, status: 404, error: "Client not found" };
+
+    // Si l'email est modifié, vérifier qu'il n'est pas déjà utilisé
+    if (patch?.email &amp;&amp; patch.email !== existing.email) {
+      const exists = await UserDAO.findByEmail(patch.email);
+      if (exists) return { ok: false, status: 409, error: "Email already used" };
+    }
+
+    // Fusionner les données existantes avec les modifications
+    const payload = { ...existing, ...patch };
+    
+    // Appliquer la mise à jour
+    await ClientDAO.update(id, payload);
+    return { ok: true, status: 200, data: { message: "Updated" } };
+  },
+
+  /**
+   * Supprime un client
+   * @async
+   * @param {number} id - ID du client à supprimer
+   * @returns {Promise&lt;Object>} Résultat de la suppression
+   * @returns {boolean} return.ok - Succès de l'opération
+   * @returns {number} return.status - Code HTTP
+   * @returns {Object} return.data - Message de confirmation
+   * @returns {string} return.error - Message d'erreur (si échec)
+   * 
+   * @example
+   * // Suppression réussie
+   * const result = await ClientService.remove(123);
+   * // result = { ok: true, status: 200, data: { message: "Deleted" } }
+   * 
+   * @example
+   * // Client non trouvé
+   * const result = await ClientService.remove(999);
+   * // result = { ok: false, status: 404, error: "Client not found" }
+   * 
+   * @note
+   * La suppression peut échouer si le client a des comptes associés
+   * (contrainte de clé étrangère). Dans ce cas, une erreur 500 sera retournée.
+   */
+  async remove(id) {
+    const existing = await ClientDAO.findById(id);
+    if (!existing) return { ok: false, status: 404, error: "Client not found" };
+
+    await ClientDAO.remove(id);
+    return { ok: true, status: 200, data: { message: "Deleted" } };
+  },
+
+  /**
+   * Récupère le client courant (pour le contexte d'authentification)
+   * @async
+   * @param {number} clientId - ID du client connecté
+   * @returns {Promise&lt;Object>} Données du client
+   * @throws {Error} Lance une erreur 404 si le client n'existe pas
+   * 
+   * @example
+   * // Utilisation dans un contrôleur
+   * try {
+   *   const client = await ClientService.getCurrentClient(req.user.id);
+   *   res.json(client);
+   * } catch (error) {
+   *   if (error.status === 404) {
+   *     res.status(404).json({ error: error.message });
+   *   } else {
+   *     res.status(500).json({ error: "Internal error" });
+   *   }
+   * }
+   * 
+   * @note
+   * Contrairement aux autres méthodes, celle-ci lance une erreur
+   * pour être cohérente avec le style des services d'authentification
+   */
+  async getCurrentClient(clientId) {
+    const client = await ClientDAO.findById(clientId);
+    if (!client) {
+      const err = new Error("Client not found");
+      err.status = 404;
+      throw err;
+    }
+    return client;
+  },
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+<<<<<<< HEAD
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+=======
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul>
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</nav>
+
+<br class="clear">
+
+<footer>
+<<<<<<< HEAD
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+=======
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Feb 26 2026 13:12:25 GMT-0500 (heure normale de l’Est nord-américain)
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

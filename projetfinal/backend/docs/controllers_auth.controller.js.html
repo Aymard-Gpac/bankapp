@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/auth.controller.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: controllers/auth.controller.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contrôleur d'authentification
+ * @module controllers/auth.controller
+ * @requires ../services/auth.service
+ */
+
+import { AuthService } from "../services/auth.service.js";
+
+/**
+ * Inscription d'un nouvel utilisateur
+ * @async
+ * @function register
+ * @param {Object} req - Requête Express
+ * @param {Object} req.body - Corps de la requête contenant les données d'inscription
+ * @param {string} req.body.first_name - Prénom
+ * @param {string} req.body.last_name - Nom
+ * @param {string} req.body.address - Adresse
+ * @param {string} req.body.city - Ville
+ * @param {string} req.body.state - Province/État
+ * @param {string} req.body.postal_code - Code postal
+ * @param {string} req.body.date_of_birth - Date de naissance
+ * @param {string} req.body.ssn - Numéro de sécurité sociale
+ * @param {string} req.body.email - Adresse courriel
+ * @param {string} req.body.password - Mot de passe
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP
+ * 
+ * @example
+ * // Requête POST /api/auth/register
+ * // Body: {
+ * //   "first_name": "Jean",
+ * //   "last_name": "Dupont",
+ * //   "email": "jean@email.com",
+ * //   "password": "Password123!",
+ * //   ...autres champs
+ * // }
+ * 
+ * // Réponse succès (201)
+ * // {
+ * //   "id": 123,
+ * //   "email": "jean@email.com"
+ * // }
+ * 
+ * // Réponse erreur (400)
+ * // {
+ * //   "error": "first_name is required"
+ * // }
+ */
+export const register = async (req, res) => {
+  const result = await AuthService.register(req.body);
+  return res
+    .status(result.status)
+    .json(result.ok ? result.data : { error: result.error });
+};
+
+/**
+ * Connexion d'un utilisateur
+ * @async
+ * @function login
+ * @param {Object} req - Requête Express
+ * @param {Object} req.body - Corps de la requête
+ * @param {string} req.body.email - Adresse courriel
+ * @param {string} req.body.password - Mot de passe
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP avec cookie HTTP-only
+ * 
+ * @example
+ * // Requête POST /api/auth/login
+ * // Body: {
+ * //   "email": "jean@email.com",
+ * //   "password": "Password123!"
+ * // }
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "token": "eyJhbGciOiJIUzI1NiIs...",
+ * //   "user": {
+ * //     "id": 123,
+ * //     "email": "jean@email.com",
+ * //     "role": "student"
+ * //   }
+ * // }
+ * // + Cookie HTTP-only "token" automatiquement défini
+ * 
+ * // Réponse erreur (401)
+ * // {
+ * //   "error": "Invalid credentials"
+ * // }
+ * 
+ * @note
+ * Le token JWT est stocké dans un cookie HTTP-only pour plus de sécurité :
+ * - httpOnly: true → inaccessible via JavaScript (protection XSS)
+ * - sameSite: "lax" → protection contre CSRF
+ * - maxAge: 2h → expiration après 2 heures
+ */
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  const result = await AuthService.login({ email, password });
+
+  if (!result.ok) {
+    return res.status(result.status).json({ error: result.error });
+  }
+
+  const { token, user } = result.data;
+
+  // Définir le cookie HTTP-only avec le token JWT
+  res.cookie("token", token, {
+    httpOnly: true,           // Empêche l'accès par JavaScript
+    sameSite: "lax",          // Protection contre les attaques CSRF
+    secure: false,            // À mettre à true en production avec HTTPS
+    maxAge: 2 * 60 * 60 * 1000, // 2 heures en millisecondes
+    path: "/",                // Cookie valide pour tout le site
+  });
+
+  // Retourner aussi le token dans la réponse pour les clients qui ne gèrent pas les cookies
+  return res.status(200).json({ token, user }); 
+};
+
+/**
+ * Déconnexion d'un utilisateur
+ * @async
+ * @function logout
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP avec cookie effacé
+ * 
+ * @example
+ * // Requête POST /api/auth/logout
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "ok": true
+ * // }
+ * 
+ * @note
+ * Supprime le cookie "token" côté client
+ */
+export const logout = async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    path: "/",
+  });
+  return res.status(200).json({ ok: true });
+};
+
+/**
+ * Récupère les informations de l'utilisateur connecté
+ * @async
+ * @function getMe
+ * @param {Object} req - Requête Express
+ * @param {Object} req.user - Utilisateur authentifié (ajouté par le middleware)
+ * @param {number} req.user.id - ID de l'utilisateur
+ * @param {Object} res - Réponse Express
+ * @returns {Promise&lt;Object>} Réponse HTTP avec les données utilisateur
+ * 
+ * @example
+ * // Requête GET /api/auth/me
+ * // Headers: { Cookie: "token=..." } ou Authorization: "Bearer ..."
+ * 
+ * // Réponse succès (200)
+ * // {
+ * //   "id": 123,
+ * //   "first_name": "Jean",
+ * //   "last_name": "Dupont",
+ * //   "email": "jean@email.com",
+ * //   "role": "student",
+ * //   "address": "...",
+ * //   ...autres champs (sans le mot de passe)
+ * // }
+ * 
+ * // Réponse erreur (401)
+ * // {
+ * //   "error": "User not found"
+ * // }
+ * 
+ * @note
+ * Nécessite d'être authentifié (middleware auth)
+ */
+export const getMe = async (req, res) => {
+<<<<<<< HEAD
+  if (!req.user?.id) {
+    return res.status(401).json({ error: "Not authenticated (req.user missing)" });
+  }
+
+=======
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+  const r = await AuthService.getCurrentUser(req.user.id);
+  return res.status(r.status).json(r.ok ? r.data : { error: r.error });
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+<<<<<<< HEAD
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+=======
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul>
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</nav>
+
+<br class="clear">
+
+<footer>
+<<<<<<< HEAD
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+=======
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Feb 26 2026 13:12:25 GMT-0500 (heure normale de l’Est nord-américain)
+>>>>>>> 672e3c5a02d1818bc024ee3512101651070e5cac
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

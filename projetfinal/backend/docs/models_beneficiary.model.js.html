@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: models/beneficiary.model.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: models/beneficiary.model.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * DAO de gestion des bénéficiaires
+ * @module models/beneficiary.model
+ * @requires ../config/database
+ */
+
+import db from "../config/database.js";
+
+/**
+ * BeneficiaryDAO
+ * Couche d'accès aux données (DAO).
+ * 
+ * Responsabilités :
+ * - Exécuter uniquement des requêtes SQL
+ * - Ne contient aucune logique HTTP (req/res)
+ * - Utilisé par les services pour interagir avec la base de données
+ */
+export const BeneficiaryDAO = {
+
+  /**
+   * Liste tous les bénéficiaires appartenant à un utilisateur
+   * @async
+   * @function listByUserId
+   * @param {number} userId - ID de l'utilisateur propriétaire des bénéficiaires
+   * @returns {Promise&lt;Array&lt;Object>>} Liste des bénéficiaires
+   *
+   * @example
+   * // Appel depuis un service
+   * const beneficiaries = await BeneficiaryDAO.listByUserId(5);
+   *
+   * // Résultat
+   * // [
+   * //   {
+   * //     id: 1,
+   * //     user_id: 5,
+   * //     name: "Hydro Québec",
+   * //     account_number: "HQ-5-001",
+   * //     bank_name: "Hydro Bank",
+   * //     created_at: "2026-03-04T10:00:00Z"
+   * //   }
+   * // ]
+   */
+  listByUserId(userId) {
+    return db.all(
+      `SELECT id, user_id, name, account_number, bank_name, created_at
+       FROM beneficiaries
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      userId
+    );
+  },
+
+  /**
+   * Recherche un bénéficiaire spécifique appartenant à un utilisateur
+   * @async
+   * @function findByIdAndUserId
+   * @param {number} id - ID du bénéficiaire
+   * @param {number} userId - ID de l'utilisateur propriétaire
+   * @returns {Promise&lt;Object|null>} Bénéficiaire trouvé ou null
+   *
+   * @example
+   * const beneficiary = await BeneficiaryDAO.findByIdAndUserId(3, 5);
+   *
+   * // Résultat
+   * // {
+   * //   id: 3,
+   * //   user_id: 5,
+   * //   name: "Bell Internet",
+   * //   account_number: "BELL-5-002",
+   * //   bank_name: "Bell Bank",
+   * //   created_at: "2026-03-04T10:00:00Z"
+   * // }
+   */
+  findByIdAndUserId(id, userId) {
+    return db.get(
+      `SELECT id, user_id, name, account_number, bank_name, created_at
+       FROM beneficiaries
+       WHERE id = ? AND user_id = ?`,
+      id,
+      userId
+    );
+  },
+
+  /**
+   * Crée un nouveau bénéficiaire pour un utilisateur
+   * @async
+   * @function create
+   * @param {Object} data - Données du bénéficiaire
+   * @param {number} data.userId - ID de l'utilisateur propriétaire
+   * @param {string} data.name - Nom du bénéficiaire (ex: Hydro Québec)
+   * @param {string} data.accountNumber - Numéro de compte du bénéficiaire
+   * @param {string} [data.bankName] - Nom de la banque (optionnel)
+   * @returns {Promise&lt;Object>} Résultat de l'insertion SQL
+   *
+   * @example
+   * await BeneficiaryDAO.create({
+   *   userId: 5,
+   *   name: "Visa Credit Card",
+   *   accountNumber: "VISA-5-003",
+   *   bankName: "Visa"
+   * });
+   *
+   * // Résultat
+   * // {
+   * //   lastID: 10,
+   * //   changes: 1
+   * // }
+   */
+  create({ userId, name, accountNumber, bankName }) {
+    return db.run(
+      `INSERT INTO beneficiaries (user_id, name, account_number, bank_name)
+       VALUES (?, ?, ?, ?)`,
+      userId,
+      name,
+      accountNumber,
+      bankName ?? null
+    );
+  },
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

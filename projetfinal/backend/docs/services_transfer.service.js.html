@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/transfer.service.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/transfer.service.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Service de gestion des virements et paiements
+ * @module services/transfer.service
+ * @requires ../config/database
+ * @requires ../models/bank.model
+ * @requires ../models/transaction.model
+ * @requires ../models/transfer.model
+ * @requires ../models/user.model
+ * @requires ../models/beneficiary.model
+ */
+
+import db from "../config/database.js";
+import { AccountDAO } from "../models/bank.model.js";
+import { TransactionDAO } from "../models/transaction.model.js";
+import { TransferDAO } from "../models/transfer.model.js";
+import { UserDAO } from "../models/user.model.js";
+import { BeneficiaryDAO } from "../models/beneficiary.model.js";
+
+/**
+ * TransferService
+ *
+ * Couche logique métier (business logic).
+ *
+ * Responsabilités :
+ * - Valider les données reçues du controller
+ * - Vérifier la sécurité (ownership des comptes)
+ * - Gérer les opérations bancaires
+ * - Utiliser des transactions SQL atomiques
+ * - Appeler les DAO pour lire/écrire en base
+ */
+export const TransferService = {
+
+  /**
+   * Virement interne entre deux comptes appartenant au même utilisateur
+   *
+   * @async
+   * @function createInternalTransfer
+   * @param {Object} payload
+   * @param {number} payload.userId - ID du client connecté
+   * @param {number} payload.fromAccountId - Compte source
+   * @param {number} payload.toAccountId - Compte destination
+   * @param {number} payload.amount - Montant du virement
+   * @param {string} payload.date - Date du virement
+   * @param {string} payload.frequency - Fréquence du virement
+   * @param {string} [payload.description] - Description optionnelle
+   * @returns {Promise&lt;Object>} Résultat du virement
+   *
+   * @example
+   * await TransferService.createInternalTransfer({
+   *   userId: 5,
+   *   fromAccountId: 1,
+   *   toAccountId: 2,
+   *   amount: 100,
+   *   frequency: "once"
+   * });
+   */
+  async createInternalTransfer(payload) {
+
+    const {
+      userId,
+      fromAccountId,
+      toAccountId,
+      amount,
+      date,
+      frequency,
+      description,
+    } = payload;
+
+    // Validation du montant
+    if (!Number.isFinite(amount) || amount &lt;= 0) {
+      return { ok: false, status: 400, error: "Montant invalide" };
+    }
+
+    // Vérifier présence des comptes
+    if (!fromAccountId || !toAccountId) {
+      return { ok: false, status: 400, error: "Comptes manquants" };
+    }
+
+    // Impossible de transférer vers le même compte
+    if (fromAccountId === toAccountId) {
+      return { ok: false, status: 400, error: "Comptes identiques" };
+    }
+
+    // Vérifier que les comptes appartiennent bien au client
+    const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
+    const to = await AccountDAO.findByIdAndClientId(toAccountId, userId);
+
+    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
+    if (!to) return { ok: false, status: 404, error: "Compte destination introuvable" };
+
+    // Vérifier le solde disponible
+    if (Number(from.balance) &lt; amount) {
+      return { ok: false, status: 400, error: "Solde insuffisant" };
+    }
+
+    try {
+
+      // Début transaction SQL atomique
+      await db.exec("BEGIN");
+
+      const newFromBalance = Number(from.balance) - amount;
+      const newToBalance = Number(to.balance) + amount;
+
+      await AccountDAO.updateBalance(from.id, newFromBalance);
+      await AccountDAO.updateBalance(to.id, newToBalance);
+
+      // Enregistrement du transfert
+      const transfer = await TransferDAO.create({
+        fromAccountId: from.id,
+        toAccountId: to.id,
+        amount,
+      });
+
+      // Métadonnées facultatives
+      const commonMeta = [];
+      if (frequency) commonMeta.push(`freq=${frequency}`);
+      const metaStr = commonMeta.length ? ` (${commonMeta.join(", ")})` : "";
+
+      // Transaction débit
+      const debit = await TransactionDAO.create({
+        accountId: from.id,
+        type: "DEBIT",
+        amount,
+        description: `Virement interne sortant${description ? `: ${description}` : ""}${metaStr}`,
+      });
+
+      // Transaction crédit
+      const credit = await TransactionDAO.create({
+        accountId: to.id,
+        type: "CREDIT",
+        amount,
+        description: `Virement interne entrant${description ? `: ${description}` : ""}${metaStr}`,
+      });
+
+      await db.exec("COMMIT");
+
+      return {
+        ok: true,
+        status: 201,
+        data: {
+          transfer,
+          debit,
+          credit,
+          balances: {
+            from: newFromBalance,
+            to: newToBalance,
+          },
+        },
+      };
+
+    } catch (e) {
+
+      await db.exec("ROLLBACK");
+
+      return { ok: false, status: 500, error: "Erreur serveur pendant le virement" };
+    }
+  },
+
+  /**
+   * Virement Interac vers un autre client
+   *
+   * @async
+   * @function createInteracTransfer
+   * @param {Object} payload
+   * @param {number} payload.userId - Client qui envoie
+   * @param {number} payload.fromAccountId - Compte source
+   * @param {number} payload.toClientId - Client destinataire
+   * @param {number} payload.amount - Montant
+   * @param {string} payload.description - Message optionnel
+   * @param {string} payload.frequency - Fréquence
+   */
+  async createInteracTransfer(payload) {
+
+    const { userId, fromAccountId, toClientId, amount, description, frequency } = payload;
+
+    if (!userId) return { ok: false, status: 401, error: "Non authentifié" };
+
+    if (!Number.isFinite(amount) || amount &lt;= 0) {
+      return { ok: false, status: 400, error: "Montant invalide" };
+    }
+
+    if (!fromAccountId || !toClientId) {
+      return { ok: false, status: 400, error: "fromAccountId / toClientId manquants" };
+    }
+
+    const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
+    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
+
+    const to = await AccountDAO.findCheckingByClientId(toClientId);
+    if (!to) return { ok: false, status: 404, error: "Compte courant du destinataire introuvable" };
+
+    if (from.id === to.id) {
+      return { ok: false, status: 400, error: "Impossible de transférer vers le même compte" };
+    }
+
+    if (Number(from.balance) &lt; amount) {
+      return { ok: false, status: 400, error: "Solde insuffisant" };
+    }
+
+    try {
+
+      await db.exec("BEGIN");
+
+      const receivedUser = await UserDAO.findById(toClientId);
+
+      const newFromBalance = Number(from.balance) - amount;
+      const newToBalance = Number(to.balance) + amount;
+
+      await AccountDAO.updateBalance(from.id, newFromBalance);
+      await AccountDAO.updateBalance(to.id, newToBalance);
+
+      const transfer = await TransferDAO.create({
+        fromAccountId: from.id,
+        toAccountId: to.id,
+        amount,
+      });
+
+      const desc = description ? `: ${String(description).trim()}` : "";
+
+      const debit = await TransactionDAO.create({
+        accountId: from.id,
+        type: "DEBIT",
+        amount,
+        description: `Interac envoyé → ${receivedUser.first_name}${desc}`,
+      });
+
+      const credit = await TransactionDAO.create({
+        accountId: to.id,
+        type: "CREDIT",
+        amount,
+        description: `Interac reçu ← ${userId.first_name} ${desc}`,
+      });
+
+      await db.exec("COMMIT");
+
+      return {
+        ok: true,
+        status: 201,
+        data: {
+          transfer,
+          debit,
+          credit,
+          toAccountId: to.id,
+          balances: { from: newFromBalance, to: newToBalance },
+        },
+      };
+
+    } catch (e) {
+
+      try {
+        await db.exec("ROLLBACK");
+      } catch (_) {}
+
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant le virement Interac",
+        details: String(e?.message ?? e),
+      };
+    }
+  },
+
+  /**
+   * Paiement d'une facture vers un bénéficiaire
+   *
+   * @async
+   * @function payBill
+   * @param {Object} payload
+   * @param {number} payload.userId
+   * @param {number} payload.fromAccountId
+   * @param {number} payload.beneficiaryId
+   * @param {number} payload.amount
+   * @param {string} payload.date
+   * @param {string} payload.frequency
+   * @param {string} [payload.description]
+   */
+  async payBill(payload) {
+
+    const {
+      userId,
+      fromAccountId,
+      beneficiaryId,
+      amount,
+      date,
+      frequency,
+      description,
+    } = payload;
+
+    if (!Number.isFinite(amount) || amount &lt;= 0) {
+      return { ok: false, status: 400, error: "Montant invalide" };
+    }
+
+    if (!fromAccountId || !beneficiaryId) {
+      return { ok: false, status: 400, error: "Champs manquants" };
+    }
+
+    const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
+    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
+
+    const beneficiary = await BeneficiaryDAO.findByIdAndUserId(beneficiaryId, userId);
+    if (!beneficiary) return { ok: false, status: 404, error: "Bénéficiaire introuvable" };
+
+    if (Number(from.balance) &lt; amount) {
+      return { ok: false, status: 400, error: "Solde insuffisant" };
+    }
+
+    try {
+
+      await db.exec("BEGIN");
+
+      const newFromBalance = Number(from.balance) - amount;
+      await AccountDAO.updateBalance(from.id, newFromBalance);
+
+      const debit = await TransactionDAO.create({
+        accountId: from.id,
+        type: "DEBIT",
+        amount,
+        description: `Paiement facture à ${beneficiary.name}${description ? `: ${description}` : ""}`,
+      });
+
+      await db.exec("COMMIT");
+
+      return {
+        ok: true,
+        status: 201,
+        data: {
+          debit,
+          beneficiary,
+          balances: { from: newFromBalance },
+        },
+      };
+
+    } catch (e) {
+
+      await db.exec("ROLLBACK");
+
+      return { ok: false, status: 500, error: "Erreur serveur pendant le paiement" };
+    }
+  }
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 13:19:38 GMT-0500 (heure normale de l’Est nord-américain)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
