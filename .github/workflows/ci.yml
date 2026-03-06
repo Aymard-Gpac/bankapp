@@ -1,64 +1,44 @@
-# Nom du pipeline qui apparaîtra dans l'onglet Actions de GitHub
 name: CI
 
-# Déclenchement du pipeline
 on:
-  # Le pipeline se lance uniquement quand on push sur la branche dev
   push:
     branches:
       - dev
-
-  # Permet de lancer le pipeline manuellement depuis GitHub
   workflow_dispatch:
 
-# Définition des jobs du pipeline
 jobs:
-
-  # -----------------------------
-  # Job pour le backend
-  # -----------------------------
   backend:
     name: Backend Tests
     runs-on: ubuntu-latest
 
-    # Tous les scripts s'exécuteront dans ce dossier
     defaults:
       run:
         working-directory: projetfinal/backend
 
     steps:
-      # Étape 1 : récupérer le code du repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Étape 2 : installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # Étape 3 : installer les dépendances du backend
       - name: Install backend dependencies
-        run: npm ci
+        run: npm install
 
-      # Étape 4 : créer le fichier .env nécessaire au backend
       - name: Create environment file
         run: |
           echo "PORT=5000" > .env
           echo "JWT_SECRET=supersecretkey" >> .env
           echo "DB_FILE=./src/data/database.sqlite" >> .env
 
-      # Étape 5 : créer le dossier de la base SQLite
       - name: Create database folder
         run: mkdir -p src/data
 
-      # Étape 6 : exécuter les tests unitaires backend
       - name: Run backend unit tests
         run: npm test
 
-  # -----------------------------
-  # Job pour le frontend
-  # -----------------------------
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -68,21 +48,17 @@ jobs:
         working-directory: projetfinal/frontend
 
     steps:
-      # Étape 1 : récupérer le code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Étape 2 : installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # Étape 3 : installer les dépendances du frontend
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm install
 
-      # Étape 4 : build de l'application Next.js
       - name: Build frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
