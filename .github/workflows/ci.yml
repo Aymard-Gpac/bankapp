@@ -1,5 +1,7 @@
+# Nom du pipeline visible dans GitHub Actions
 name: CI
 
+# Déclenchement
 on:
   push:
     branches:
@@ -7,6 +9,9 @@ on:
   workflow_dispatch:
 
 jobs:
+  # -----------------------------
+  # Tests backend
+  # -----------------------------
   backend:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -16,36 +21,38 @@ jobs:
         working-directory: projetfinal/backend
 
     steps:
+      # Récupérer le code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      # Installer les dépendances
       - name: Install backend dependencies
         run: npm install
 
+      # Créer le fichier .env pour le backend
       - name: Create environment file
         run: |
           echo "PORT=5000" > .env
           echo "JWT_SECRET=supersecretkey" >> .env
           echo "DB_FILE=./src/data/database.sqlite" >> .env
 
+      # Créer le dossier SQLite
       - name: Create database folder
         run: mkdir -p src/data
 
-      - name: Run backend unit tests with coverage
-        run: npm test -- --coverage --passWithNoTests
+      # Lancer les tests backend
+      - name: Run backend unit tests
+        run: npm test -- --passWithNoTests
 
-      - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: projetfinal/backend/coverage
-          if-no-files-found: ignore
-
+  # -----------------------------
+  # Build frontend
+  # -----------------------------
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -55,22 +62,45 @@ jobs:
         working-directory: projetfinal/frontend
 
     steps:
+      # Récupérer le code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      # Installer les dépendances
       - name: Install frontend dependencies
         run: npm install
 
+      # Lancer le lint si disponible
       - name: Lint frontend
         run: npm run lint --if-present
 
+      # Build Next.js
       - name: Build frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
           API_URL_INTERNAL: http://localhost:5000
         run: npm run build
+
+  # -----------------------------
+  # Vérification build Docker
+  # -----------------------------
+  docker:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      # Récupérer le code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Construire les images Docker
+      - name: Build Docker images
+        working-directory: projetfinal
+        run: docker compose build
