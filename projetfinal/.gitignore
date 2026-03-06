@@ -3,11 +3,7 @@
 # =====================
 node_modules/
 *.log
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
 
 # =====================
 # Backend (Node + SQLite)
@@ -19,8 +15,6 @@ backend/*.sqlite
 backend/*.sqlite3
 backend/*.db
 backend/dist/
-backend/build/
-backend/package-lock.json
 
 # =====================
 # Frontend (Next.js)
@@ -40,9 +34,6 @@ frontend/.env.local
 # =====================
 coverage/
 .nyc_output/
-jest.config.js
-*.test.js
-*.spec.js
 
 # =====================
 # OS / Editor
