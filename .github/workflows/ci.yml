@@ -64,8 +64,8 @@ jobs:
 
       - name: Build frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:5000
-          API_URL_INTERNAL: http://localhost:5000
+          NEXT_PUBLIC_API_URL: http://13.222.4.5:5000
+          API_URL_INTERNAL: http://backend:5000
         run: npm run build
 
   docker:
@@ -91,14 +91,18 @@ jobs:
         with:
           context: ./projetfinal/backend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-backend:latest,${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-backend:dev
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-backend:dev
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
           context: ./projetfinal/frontend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-frontend:latest,${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-frontend:dev
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/projetfinal-frontend:dev
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
@@ -123,3 +127,4 @@ jobs:
             cd ~/banking-app
             docker compose pull
             docker compose up -d
+            docker image prune -f
