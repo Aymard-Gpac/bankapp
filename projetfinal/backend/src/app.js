@@ -10,12 +10,13 @@ import cookieParser from "cookie-parser";
 export function createApp() {
   const app = express();
 
-  const allowedOrigins = [
-    "http://localhost:3001",
-    "http://localhost:3000",
-    "http://0.0.0.0:3000",
-    "http://0.0.0.0:3001",
-  ];
+ const allowedOrigins = [
+  "http://localhost:3001",
+  "http://localhost:3000",
+  "http://0.0.0.0:3000",
+  "http://0.0.0.0:3001",
+  "http://13.222.4.5:3000",
+];
 
   app.use(
     cors({
