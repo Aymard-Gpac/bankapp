@@ -65,18 +65,20 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
         email: data.email,
         password: data.password,
       });
-      
-      localStorage.setItem("token", response.token);
-      console.log(response);
+
+      document.cookie = `token=${response.token}; path=/; max-age=86400`;
       const role = response?.user?.role;
 
       // ✅ Redirect selon rôle
       if (role === "client") {
-        router.push("/");
+        window.location.href = "/";
+      } else if (role === "etudiant") {
+        window.location.href = "/student";
       } else {
-        router.push("/student");
+          setErrorMsg("Role introuvable");
       }
-    } catch (error: any) {  
+
+    } catch (error: any) {
       console.log(error);
       setErrorMsg(error?.message || "Une erreur est survenue");
     } finally {
