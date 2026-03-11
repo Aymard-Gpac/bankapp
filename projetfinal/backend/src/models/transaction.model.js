@@ -120,4 +120,24 @@ export const TransactionDAO = {
     // Récupération de la transaction créée
     return db.get("SELECT * FROM transactions WHERE id = ?", r.lastID);
   },
+// Récupère l'historique de transactions d'un client (toutes les transactions de tous ses comptes)
+  findHistoryByClientId(clientId) {
+  return db.all(
+    `SELECT
+       t.id,
+       t.account_id,
+       a.type AS account_type,
+       a.account_number,
+       t.description,
+       t.amount,
+       t.type,
+       t.created_at
+     FROM transactions t
+     INNER JOIN accounts a ON a.id = t.account_id
+     WHERE a.user_id = ?
+     ORDER BY t.created_at DESC, t.id DESC`,
+    clientId
+  );
+},
+
 };

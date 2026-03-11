@@ -147,6 +147,10 @@ router.get(
   "/:clientId/accounts/:accountId", 
   BankController.getClientAccount
 );
+router.get(
+  "/:clientId/transactions/history",
+  BankController.getClientTransactionHistory
+);
 
 /**
  * Export du router configuré

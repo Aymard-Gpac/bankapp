@@ -149,4 +149,23 @@ export const BankController = {
       next(err);
     }
   },
+  // Récupère l'historique complet des transactions d'un client (tous comptes confondus)
+  async getClientTransactionHistory(req, res, next) {
+  try {
+    const clientId = Number(req.params.clientId);
+
+    if (isNaN(clientId)) {
+      return res.status(400).json({ error: "Invalid clientId" });
+    }
+
+    if (req.user?.role === "client" && req.user.id !== clientId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const result = await BankService.getClientTransactionHistory(clientId);
+    res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+},
 };

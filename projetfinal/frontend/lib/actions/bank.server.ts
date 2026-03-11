@@ -43,3 +43,25 @@ export async function getClientAccountServer({
 
   return JSON.parse(text);
 }
+ // =========================
+ 
+export async function getClientTransactionHistoryServer(clientId: number) {
+  const token = cookies().get("token")?.value;
+
+  const res = await fetch(
+    `${API_URL}/api/clients/${clientId}/transactions/history`,
+    {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }
+  );
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(
+      `getClientTransactionHistoryServer failed ${res.status}: ${text}`
+    );
+  }
+
+  return JSON.parse(text);
+}
