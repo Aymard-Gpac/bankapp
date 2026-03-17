@@ -1,4 +1,4 @@
-// tests/unit/client.service.test.js
+
 import { jest, describe, test, expect, beforeEach } from "@jest/globals";
 
 // Mock des dépendances

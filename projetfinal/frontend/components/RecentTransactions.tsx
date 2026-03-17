@@ -49,7 +49,7 @@ const RecentTransactions = ({
         <h2 className="recent-transactions-label">Recent transactions</h2>
 
         <Link href={`/transaction-history/?id=${selectedId}`} className="view-all-btn">
-          View all
+          Voir tout
         </Link>
       </header>
 

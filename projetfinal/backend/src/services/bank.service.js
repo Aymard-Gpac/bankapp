@@ -174,4 +174,8 @@ export const BankService = {
       },
     };
   },
+  // Récupère l'historique complet des transactions d'un client (tous comptes confondus)
+  async getClientTransactionHistory(clientId) {
+  return TransactionDAO.findHistoryByClientId(clientId);
+},
 };
