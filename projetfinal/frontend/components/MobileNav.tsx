@@ -16,6 +16,34 @@ import { MobileNavProps } from "@/types";
 
 const MobileNav = ({ user }: MobileNavProps) => {
   const pathname = usePathname();
+  const clientId = user?.id;
+
+  const normalize = (path: string) =>
+    path.length > 1 ? path.replace(/\/+$/, "") : path;
+
+  const getEquivalentPaths = (href: string) => {
+    const h = normalize(href);
+
+    if (!clientId) return [h];
+
+    const apiAccounts = normalize(`/api/clients/${clientId}/accounts`);
+    const clientAccounts = normalize(`/client/${clientId}/accounts`);
+
+    if (h === apiAccounts || h === clientAccounts) {
+      return ["/", apiAccounts, clientAccounts];
+    }
+
+    return [h];
+  };
+
+  const isLinkActive = (href: string) => {
+    const current = normalize(pathname);
+    const equivalents = getEquivalentPaths(href);
+
+    return equivalents.some(
+      (p) => current === p || current.startsWith(`${p}/`)
+    );
+  };
 
   return (
     <section className="w-full max-w-[264px]">
@@ -29,6 +57,7 @@ const MobileNav = ({ user }: MobileNavProps) => {
             className="cursor-pointer"
           />
         </SheetTrigger>
+
         <SheetContent side="left" className="border-none bg-white">
           <Link
             href="/"
@@ -44,63 +73,63 @@ const MobileNav = ({ user }: MobileNavProps) => {
               BANK APP
             </h1>
           </Link>
+
           <div className="mobilenav-sheet">
-            <SheetClose asChild>
-              <nav className="flex h-full flex-col gap-6 pt-16 text-white">
-                {sidebarLinks
-                  .filter((item) => {
-                    const role = user?.role;
+            <nav className="flex h-full flex-col gap-6 pt-16 text-white">
+              {sidebarLinks
+                .filter((item) => {
+                  const role = user?.role;
 
-                    // 1) Étudiant: cacher virements
-                    if (
-                      role === "etudiant" &&
-                      item.route.startsWith("/transfers")
-                    )
-                      return false;
+                  if (role === "etudiant" && item.route.includes("/transfers")) {
+                    return false;
+                  }
 
-                    // 2) Client: cacher tout ce qui est student
-                    if (role === "client" && item.route.startsWith("/student"))
-                      return false;
+                  if (role === "client" && item.route.includes("/student")) {
+                    return false;
+                  }
 
-                    return true;
-                  })
-                  .map((item) => {
-                    const isActive =
-                      pathname === item.route ||
-                      pathname.startsWith(`${item.route}/`);
+                  return true;
+                })
+                .map((item) => {
+                  const href =
+                    item.route.includes("{id}") && clientId
+                      ? item.route.replace("{id}", String(clientId))
+                      : item.route;
 
-                    return (
-                      <SheetClose asChild key={item.route}>
-                        <Link
-                          href={item.route}
-                          key={item.label}
-                          className={cn("mobilenav-sheet_close w-full", {
-                            "bg-bank-gradient": isActive,
+                  const isActive = isLinkActive(href);
+
+                  return (
+                    <SheetClose asChild key={item.route}>
+                      <Link
+                        href={href}
+                        className={cn("mobilenav-sheet_close w-full", {
+                          "bg-bank-gradient": isActive,
+                        })}
+                      >
+                        <Image
+                          src={item.imgURL}
+                          alt={item.label}
+                          width={20}
+                          height={20}
+                          className={cn({
+                            "brightness-[3] invert-0": isActive,
                           })}
+                        />
+                        <p
+                          className={cn(
+                            "text-16 font-semibold text-black-2",
+                            {
+                              "text-white": isActive,
+                            }
+                          )}
                         >
-                          <Image
-                            src={item.imgURL}
-                            alt={item.label}
-                            width={20}
-                            height={20}
-                            className={cn({
-                              "brightness-[3] invert-0": isActive,
-                            })}
-                          />
-                          <p
-                            className={cn(
-                              "text-16 font-semibold text-black-2",
-                              { "text-white": isActive },
-                            )}
-                          >
-                            {item.label}
-                          </p>
-                        </Link>
-                      </SheetClose>
-                    );
-                  })}
-              </nav>
-            </SheetClose>
+                          {item.label}
+                        </p>
+                      </Link>
+                    </SheetClose>
+                  );
+                })}
+            </nav>
 
             <Footer user={user} type="mobile" />
           </div>

@@ -31,10 +31,13 @@ const RightSidebar = ({ user }: RightSidebarProps) => {
 
       <section className="banks">
         <div className="flex w-full justify-between">
-          <h2 className="header-2">My Banks</h2>
+          <h2 className="header-2">Mes comptes</h2>
+
           <Link href="/" className="flex gap-2">
-            <Image src="/icons/plus.svg" width={20} height={20} alt="plus" />
-            <h2 className="text-14 font-semibold text-gray-600">Add Bank</h2>
+            <Image src="/icons/plus.svg" width={20} height={20} alt="ajouter" />
+            <h2 className="text-14 font-semibold text-gray-600">
+              Ajouter un compte
+            </h2>
           </Link>
         </div>
       </section>

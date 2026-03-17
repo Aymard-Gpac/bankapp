@@ -16,10 +16,8 @@ const RecentTransactions = ({
   const initialSelectedId = String(accountId ?? accounts?.[0]?.id ?? "");
   const [selectedId, setSelectedId] = useState(initialSelectedId);
 
-  // ✅ compat: accountId / account_id
   const getTxAccountId = (t: any) => String(t.accountId ?? t.account_id ?? "");
 
-  // ✅ compat: createdAt / created_at / date
   const getTxTime = (t: any) => {
     const raw = t.createdAt ?? t.created_at ?? t.date ?? t.$createdAt ?? t.$created_at;
     const ms = raw ? new Date(raw).getTime() : 0;
@@ -34,8 +32,8 @@ const RecentTransactions = ({
 
       const list = (transactions ?? [])
         .filter((t: any) => getTxAccountId(t) === id)
-        .sort((a: any, b: any) => getTxTime(b) - getTxTime(a)) // ✅ plus récent d’abord
-        .slice(0, 5); // ✅ top 5
+        .sort((a: any, b: any) => getTxTime(b) - getTxTime(a))
+        .slice(0, 5);
 
       map.set(id, list);
     }
@@ -46,7 +44,7 @@ const RecentTransactions = ({
   return (
     <section className="recent-transactions">
       <header className="flex items-center justify-between">
-        <h2 className="recent-transactions-label">Recent transactions</h2>
+        <h2 className="recent-transactions-label">Transactions récentes</h2>
 
         <Link href={`/transaction-history/?id=${selectedId}`} className="view-all-btn">
           Voir tout

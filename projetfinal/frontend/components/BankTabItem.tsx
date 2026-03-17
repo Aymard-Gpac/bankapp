@@ -11,20 +11,18 @@ export const BankTabItem = ({
   setSelectedId,
 }: {
   account: Account;
-  selectedId: string;                 // id sélectionné (string)
+  selectedId: string;
   setSelectedId?: (id: string) => void;
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const accountIdStr = String(account.id);     // ✅ convertit number -> string
+  const accountIdStr = String(account.id);
   const isActive = selectedId === accountIdStr;
 
   const handleBankChange = () => {
-    // ✅ Met à jour le state sélectionné avec string
     if (setSelectedId) setSelectedId(accountIdStr);
 
-    // ✅ Met à jour l'URL avec string
     const newUrl = formUrlQuery({
       params: searchParams.toString(),
       key: "id",
@@ -47,8 +45,8 @@ export const BankTabItem = ({
           "text-gray-500": !isActive,
         })}
       >
-        {/* ✅ Affichage stable même si name manque */}
-        {account.type ?? `Account ${account.id}`}
+        {/* Affichage stable même si le nom du compte est absent */}
+        {account.type ?? `Compte ${account.id}`}
       </p>
     </div>
   );

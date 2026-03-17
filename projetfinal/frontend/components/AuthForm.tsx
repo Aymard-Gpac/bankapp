@@ -60,7 +60,6 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
         return;
       }
 
-      // SIGN-IN
       const response = await signIn({
         email: data.email,
         password: data.password,
@@ -69,15 +68,13 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
       document.cookie = `token=${response.token}; path=/; max-age=86400`;
       const role = response?.user?.role;
 
-      // ✅ Redirect selon rôle
       if (role === "client") {
         window.location.href = "/";
       } else if (role === "etudiant") {
         window.location.href = "/student";
       } else {
-          setErrorMsg("Role introuvable");
+        setErrorMsg("Rôle introuvable");
       }
-
     } catch (error: any) {
       console.log(error);
       setErrorMsg(error?.message || "Une erreur est survenue");
@@ -90,7 +87,7 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
     <section className="auth-form">
       <header className="flex flex-col gap-5 md:gap-8">
         <Link href="/" className="cursor-pointer flex items-center gap-1">
-          <Image src="/icons/logo.svg" width={34} height={34} alt="Horizon logo" />
+          <Image src="/icons/logo.svg" width={34} height={34} alt="Logo Horizon" />
           <h1 className="text-26 font-ibm-plex-serif font-bold text-black-1">
             BANK APP
           </h1>
@@ -98,10 +95,10 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
 
         <div className="flex flex-col gap-1 md:gap-3">
           <h1 className="text-24 lg:text-36 font-semibold text-gray-900">
-            {user ? "Link Account" : type === "sign-in" ? "Sign In" : "Sign Up"}
+            {user ? "Lier un compte" : type === "sign-in" ? "Connexion" : "Inscription"}
           </h1>
           <p className="text-16 font-normal text-gray-600">
-            {user ? "Link your account to get started" : "Please enter your details"}
+            {user ? "Liez votre compte pour commencer" : "Veuillez entrer vos informations"}
           </p>
 
           {errorMsg && (
@@ -118,43 +115,43 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
                 <CustomInput
                   control={form.control}
                   name="firstName"
-                  label="First Name"
-                  placeholder="Enter your first name"
+                  label="Prénom"
+                  placeholder="Entrez votre prénom"
                 />
                 <CustomInput
                   control={form.control}
                   name="lastName"
-                  label="Last Name"
-                  placeholder="Enter your last name"
+                  label="Nom"
+                  placeholder="Entrez votre nom"
                 />
               </div>
 
               <CustomInput
                 control={form.control}
                 name="address1"
-                label="Address"
-                placeholder="Enter your specific address"
+                label="Adresse"
+                placeholder="Entrez votre adresse complète"
               />
 
               <CustomInput
                 control={form.control}
                 name="city"
-                label="City"
-                placeholder="Enter your city"
+                label="Ville"
+                placeholder="Entrez votre ville"
               />
 
               <div className="flex gap-4">
                 <CustomInput
                   control={form.control}
                   name="state"
-                  label="State"
-                  placeholder="Example: NY"
+                  label="Province / État"
+                  placeholder="Exemple : ON"
                 />
                 <CustomInput
                   control={form.control}
                   name="postalCode"
-                  label="Postal Code"
-                  placeholder="Example: 11101"
+                  label="Code postal"
+                  placeholder="Exemple : K1A0B1"
                 />
               </div>
 
@@ -162,14 +159,14 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
                 <CustomInput
                   control={form.control}
                   name="dateOfBirth"
-                  label="Date of Birth"
-                  placeholder="YYYY-MM-DD"
+                  label="Date de naissance"
+                  placeholder="AAAA-MM-JJ"
                 />
                 <CustomInput
                   control={form.control}
                   name="ssn"
-                  label="SSN"
-                  placeholder="Example: 1234"
+                  label="NAS / Identifiant"
+                  placeholder="Exemple : 1234"
                 />
               </div>
             </>
@@ -178,27 +175,27 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
           <CustomInput
             control={form.control}
             name="email"
-            label="Email"
-            placeholder="Enter your email"
+            label="Courriel"
+            placeholder="Entrez votre courriel"
           />
 
           <CustomInput
             control={form.control}
             name="password"
-            label="Password"
-            placeholder="Enter your password"
+            label="Mot de passe"
+            placeholder="Entrez votre mot de passe"
           />
 
           <div className="flex flex-col gap-4">
             <Button type="submit" disabled={isLoading} className="form-btn">
               {isLoading ? (
                 <>
-                  <Loader2 size={20} className="animate-spin" /> &nbsp; Loading...
+                  <Loader2 size={20} className="animate-spin" /> &nbsp; Chargement...
                 </>
               ) : type === "sign-in" ? (
-                "Sign In"
+                "Se connecter"
               ) : (
-                "Sign Up"
+                "S’inscrire"
               )}
             </Button>
           </div>
@@ -207,13 +204,15 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
 
       <footer className="flex justify-center gap-1">
         <p className="text-14 font-normal text-gray-600">
-          {type === "sign-in" ? "Don't have an account?" : "Already have an account?"}
+          {type === "sign-in"
+            ? "Vous n'avez pas de compte ?"
+            : "Vous avez déjà un compte ?"}
         </p>
         <Link
           href={type === "sign-in" ? "/sign-up" : "/sign-in"}
           className="form-link"
         >
-          {type === "sign-in" ? "Sign up" : "Sign in"}
+          {type === "sign-in" ? "S'inscrire" : "Se connecter"}
         </Link>
       </footer>
     </section>
