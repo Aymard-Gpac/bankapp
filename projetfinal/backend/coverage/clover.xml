@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1773259258691" clover="3.2.0">
-  <project timestamp="1773259258691" name="All files">
+<coverage generated="1773708656022" clover="3.2.0">
+  <project timestamp="1773708656022" name="All files">
     <metrics statements="211" coveredstatements="204" conditionals="145" coveredconditionals="136" methods="27" coveredmethods="27" elements="383" coveredelements="367" complexity="0" loc="211" ncloc="211" packages="3" files="8" classes="8"/>
     <package name="controllers">
       <metrics statements="30" coveredstatements="30" conditionals="22" coveredconditionals="22" methods="3" coveredmethods="3"/>
-      <file name="bank.controller.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\controllers\bank.controller.js">
+      <file name="bank.controller.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\controllers\bank.controller.js">
         <metrics statements="30" coveredstatements="30" conditionals="22" coveredconditionals="22" methods="3" coveredmethods="3"/>
         <line num="14" count="1" type="stmt"/>
         <line num="48" count="5" type="stmt"/>
@@ -40,14 +40,14 @@
     </package>
     <package name="models">
       <metrics statements="10" coveredstatements="10" conditionals="4" coveredconditionals="4" methods="7" coveredmethods="7"/>
-      <file name="beneficiary.model.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\models\beneficiary.model.js">
+      <file name="beneficiary.model.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\models\beneficiary.model.js">
         <metrics statements="4" coveredstatements="4" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
         <line num="18" count="1" type="stmt"/>
         <line num="44" count="1" type="stmt"/>
         <line num="75" count="1" type="stmt"/>
         <line num="110" count="1" type="stmt"/>
       </file>
-      <file name="transaction.model.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\models\transaction.model.js">
+      <file name="transaction.model.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\models\transaction.model.js">
         <metrics statements="6" coveredstatements="6" conditionals="2" coveredconditionals="2" methods="4" coveredmethods="4"/>
         <line num="18" count="1" type="stmt"/>
         <line num="45" count="3" type="stmt"/>
@@ -59,7 +59,7 @@
     </package>
     <package name="services">
       <metrics statements="171" coveredstatements="164" conditionals="119" coveredconditionals="110" methods="17" coveredmethods="17"/>
-      <file name="auth.service.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\services\auth.service.js">
+      <file name="auth.service.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\services\auth.service.js">
         <metrics statements="26" coveredstatements="26" conditionals="14" coveredconditionals="14" methods="3" coveredmethods="3"/>
         <line num="19" count="1" type="stmt"/>
         <line num="75" count="16" type="stmt"/>
@@ -88,7 +88,7 @@
         <line num="238" count="4" type="stmt"/>
         <line num="240" count="4" type="stmt"/>
       </file>
-      <file name="bank.service.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\services\bank.service.js">
+      <file name="bank.service.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\services\bank.service.js">
         <metrics statements="14" coveredstatements="14" conditionals="4" coveredconditionals="4" methods="3" coveredmethods="3"/>
         <line num="16" count="1" type="stmt"/>
         <line num="56" count="6" type="stmt"/>
@@ -105,13 +105,13 @@
         <line num="166" count="7" type="stmt"/>
         <line num="179" count="3" type="stmt"/>
       </file>
-      <file name="beneficiary.service.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\services\beneficiary.service.js">
+      <file name="beneficiary.service.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\services\beneficiary.service.js">
         <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
         <line num="3" count="1" type="stmt"/>
         <line num="5" count="2" type="stmt"/>
         <line num="6" count="1" type="stmt"/>
       </file>
-      <file name="client.service.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\services\client.service.js">
+      <file name="client.service.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\services\client.service.js">
         <metrics statements="48" coveredstatements="48" conditionals="39" coveredconditionals="38" methods="7" coveredmethods="7"/>
         <line num="26" count="13" type="stmt"/>
         <line num="27" count="13" type="stmt"/>
@@ -162,7 +162,7 @@
         <line num="361" count="2" type="stmt"/>
         <line num="363" count="1" type="stmt"/>
       </file>
-      <file name="transfer.service.js" path="C:\Users\guyay\Documents\PI\sprint2\systeme-bancaire\projetfinal\backend\src\services\transfer.service.js">
+      <file name="transfer.service.js" path="D:\cours\hivers2026\projetIntegrateur\systeme-bancaire\projetfinal\backend\src\services\transfer.service.js">
         <metrics statements="80" coveredstatements="73" conditionals="62" coveredconditionals="54" methods="3" coveredmethods="3"/>
         <line num="31" count="1" type="stmt"/>
         <line num="67" count="8" type="stmt"/>
