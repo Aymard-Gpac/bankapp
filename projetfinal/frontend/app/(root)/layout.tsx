@@ -12,12 +12,14 @@ type LayoutProps = {
 
 export default async function ClientLayout({ children }: LayoutProps) {
   const client = await getCurrentUserServer();
-    //  Protection : si aucun utilisateur connecté,
-  // on redirige vers la page de connexion pour éviter l'erreur client.id null
+
+  // ✅ Protection : si aucun utilisateur n’est connecté,
+  // on redirige vers la page de connexion pour éviter une erreur liée à client.id
   if (!client?.id) {
-    redirect("/sign-in"); // adapte si ta route login est différente
+    redirect("/sign-in");
   }
-  //  ici client existe forcément
+
+  // ✅ À ce stade, l’utilisateur existe forcément
   const accounts = await getCurrentClientServer(client.id);
 
   return (

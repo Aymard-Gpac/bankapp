@@ -2,9 +2,16 @@ import HeaderBox from "@/components/HeaderBox";
 import HistoryTabs from "@/components/HistoryTabs";
 import { getClientTransactionHistoryServer } from "@/lib/actions/bank.server";
 import { getCurrentUserServer } from "@/lib/actions/user.server";
+import { redirect } from "next/navigation";
 
 const HistoryPage = async () => {
   const client = await getCurrentUserServer();
+
+  // ✅ Sécurité : éviter crash si non connecté
+  if (!client || !client.id) {
+    redirect("/sign-in");
+  }
+
   const clientId = client.id;
 
   const history = await getClientTransactionHistoryServer(clientId);

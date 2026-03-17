@@ -10,7 +10,6 @@ const BankInfo = ({ account, accountId, type }: BankInfoProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ accountId est string, account.id est number
   const isActive = accountId === String(account?.id);
 
   const handleBankChange = () => {
@@ -25,16 +24,13 @@ const BankInfo = ({ account, accountId, type }: BankInfoProps) => {
 
   const colors = getAccountTypeColors(account?.type as AccountType);
 
-  // ✅ Mapping anti-NaN : si ton API renvoie balance au lieu de currentBalance
   const displayName =
-    account?.type || `Account ${account?.id}`;
+    account?.type || `Compte ${account?.id}`;
 
   const displaySubtype = account?.subtype || account?.type || "";
 
   const displayBalance =
     typeof account?.balance === "number"
-      ? account.balance
-      : typeof account?.balance === "number"
       ? account.balance
       : 0;
 
@@ -52,7 +48,7 @@ const BankInfo = ({ account, accountId, type }: BankInfoProps) => {
           src="/icons/connect-bank.svg"
           width={20}
           height={20}
-          alt={displaySubtype}
+          alt={displaySubtype || "compte bancaire"}
           className="m-2 min-w-5"
         />
       </figure>

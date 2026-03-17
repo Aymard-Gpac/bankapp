@@ -1,9 +1,16 @@
 import TransferTabs from "@/components/TransferTabs";
 import { getClientAccountsServer } from "@/lib/actions/bank.server";
 import { getCurrentUserServer } from "@/lib/actions/user.server";
+import { redirect } from "next/navigation";
 
 const Page = async () => {
   const client = await getCurrentUserServer();
+
+  // ✅ Sécurité : éviter un crash si l'utilisateur n'est pas connecté
+  if (!client || !client.id) {
+    redirect("/sign-in");
+  }
+
   const accounts = await getClientAccountsServer(client.id);
   const accountsData = accounts?.data ?? [];
 
@@ -14,7 +21,7 @@ const Page = async () => {
           <div>
             <h1 className="payment-transfer__title">Virements</h1>
             <p className="payment-transfer__subtitle">
-              Transférez de l’argent entre vos comptes ou via Interac.
+              Transférez de l’argent entre vos comptes ou par Interac.
             </p>
           </div>
         </header>
@@ -30,10 +37,10 @@ const Page = async () => {
             <div className="payment-transfer__help-card">
               <h3 className="payment-transfer__help-title">Conseils</h3>
               <ul className="payment-transfer__help-list">
-                <li>Choisis un compte source valide (solde suffisant).</li>
-                <li>Pour Interac, vérifie l’email du destinataire.</li>
+                <li>Choisissez un compte source valide avec un solde suffisant.</li>
+                <li>Pour Interac, vérifiez l’adresse courriel du destinataire.</li>
                 <li>Les transferts sont enregistrés automatiquement.</li>
-                <li>Pour Factures, sélectionne un bénéficiaire.</li>
+                <li>Pour les factures, sélectionnez un bénéficiaire.</li>
               </ul>
             </div>
 

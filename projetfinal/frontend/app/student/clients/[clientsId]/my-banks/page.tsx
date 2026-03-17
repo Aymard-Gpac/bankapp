@@ -13,16 +13,16 @@ type PageProps = {
 const MyBanks = async ({ params }: PageProps) => {
   const clientId = Number(params.clientsId);
 
-  const client = await getCurrentClientServer( clientId );
-  const accounts = await getClientAccountsServer( clientId );
+  const client = await getCurrentClientServer(clientId);
+  const accounts = await getClientAccountsServer(clientId);
 
   if (!accounts?.data?.length) {
     return (
       <section className="flex">
         <div className="my-banks">
           <HeaderBox
-            title="Bank Accounts"
-            subtext="No bank accounts found for this client."
+            title="Comptes bancaires"
+            subtext="Aucun compte bancaire trouvé pour ce client."
             userName={`${client?.first_name ?? ""} ${client?.last_name ?? ""}`.trim() || "Client"}
           />
         </div>
@@ -37,13 +37,13 @@ const MyBanks = async ({ params }: PageProps) => {
     <section className="flex">
       <div className="my-banks">
         <HeaderBox
-          title="Bank Accounts"
-          subtext="Effortlessly manage banking activities."
+          title="Comptes bancaires"
+          subtext="Gérez vos opérations bancaires en toute simplicité."
           userName={clientName}
         />
 
         <div className="space-y-4">
-          <h2 className="header-2">Cards</h2>
+          <h2 className="header-2">Cartes</h2>
 
           <div className="flex flex-wrap gap-6">
             {accounts.data.map((a: Account) => (
@@ -52,7 +52,6 @@ const MyBanks = async ({ params }: PageProps) => {
           </div>
         </div>
       </div>
-
     </section>
   );
 };
