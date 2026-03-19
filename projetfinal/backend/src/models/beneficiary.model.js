@@ -80,6 +80,25 @@ export const BeneficiaryDAO = {
       userId
     );
   },
+    /**
+   * Vérifie si un bénéficiaire avec le même numéro de compte existe déjà
+   * pour cet utilisateur.
+   * @async
+   * @function findByAccountNumberAndUserId
+   * @param {string} accountNumber
+   * @param {number} userId
+   * @returns {Promise<Object|null>}
+   */
+  findByAccountNumberAndUserId(accountNumber, userId) {
+    return db.get(
+      `SELECT id, user_id, name, account_number, bank_name, created_at
+       FROM beneficiaries
+       WHERE account_number = ? AND user_id = ?`,
+      accountNumber,
+      userId
+    );
+  },
+
 
   /**
    * Crée un nouveau bénéficiaire pour un utilisateur

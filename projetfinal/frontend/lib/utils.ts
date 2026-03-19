@@ -14,6 +14,14 @@ export function cn(...inputs: ClassValue[]) {
 // ============================
 // FORMAT DATE / TIME (safe types)
 // ============================
+export function getLocalDateInputValue(date: Date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export const formatDateTime = (input: string | number | Date) => {
   const dateTimeOptions: Intl.DateTimeFormatOptions = {
     weekday: "short",
@@ -43,7 +51,7 @@ export const formatDateTime = (input: string | number | Date) => {
     hour12: true,
   };
 
-  const d = new Date(input);
+  const d = parseISODate(input as any) ?? new Date();
 
   const formattedDateTime = d.toLocaleString("en-US", dateTimeOptions);
   const formattedDateDay = d.toLocaleString("en-US", dateDayOptions);
@@ -58,13 +66,34 @@ export const formatDateTime = (input: string | number | Date) => {
   };
 };
 
-export function parseISODate(dateStr?: string | null) {
+export function parseISODate(dateStr?: string | number | Date | null) {
   if (!dateStr) return null;
 
+  if (dateStr instanceof Date) {
+    return Number.isNaN(dateStr.getTime()) ? null : dateStr;
+  }
+
+  if (typeof dateStr === "number") {
+    const dt = new Date(dateStr);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
   // si c'est un format YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+  if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const [y, m, d] = dateStr.split("-").map(Number);
     return new Date(y, m - 1, d); // ✅ local date, pas de bug timezone
+  }
+
+  // si c'est un format SQLite "YYYY-MM-DD HH:mm:ss"
+  if (
+    typeof dateStr === "string" &&
+    /^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(dateStr)
+  ) {
+    const [datePart, timePart] = dateStr.split(" ");
+    const [y, m, d] = datePart.split("-").map(Number);
+    const [hh, mm, ss] = timePart.split(":").map(Number);
+
+    return new Date(y, m - 1, d, hh, mm, ss);
   }
 
   const dt = new Date(dateStr);
@@ -226,12 +255,25 @@ export function decryptId(id: string) {
 // ============================
 // STATUS
 // ============================
-export const getTransactionStatus = (date: Date) => {
-  const today = new Date();
-  const twoDaysAgo = new Date(today);
-  twoDaysAgo.setDate(today.getDate() - 2);
+export const getTransactionStatus = (
+  date: Date,
+  description?: string | null
+) => {
+  const now = new Date();
 
-  return date > twoDaysAgo ? "Processing" : "Success";
+  const desc = (description || "").toLowerCase();
+
+  //  Si c’est une facture → délai de 2 jours
+  if (desc.includes("facture")) {
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+
+    return now.getTime() - date.getTime() >= twoDaysInMs
+      ? "Success"
+      : "Processing";
+  }
+
+  //  Tous les autres (interne + interac) → instantané
+  return "Success";
 };
 
 // ============================

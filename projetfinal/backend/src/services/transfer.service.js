@@ -28,6 +28,30 @@ import { BeneficiaryDAO } from "../models/beneficiary.model.js";
  * - Utiliser des transactions SQL atomiques
  * - Appeler les DAO pour lire/écrire en base
  */
+
+/**
+ * Convertit une date "YYYY-MM-DD" provenant du frontend
+ * en format DATETIME SQLite "YYYY-MM-DD HH:mm:ss".
+ * Si la date est absente ou invalide, on prend maintenant.
+ */
+function normalizeSqlDate(date) {
+  const now = new Date();
+
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    return `${date.trim()} ${hh}:${mm}:${ss}`;
+  }
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hh}:${mm}:${ss}`;
+}
+
 export const TransferService = {
 
   /**
@@ -65,6 +89,8 @@ export const TransferService = {
       frequency,
       description,
     } = payload;
+    // Normalisation de la date pour SQLite
+    const createdAt = normalizeSqlDate(date);
 
     // Validation du montant
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -109,6 +135,7 @@ export const TransferService = {
         fromAccountId: from.id,
         toAccountId: to.id,
         amount,
+        createdAt,
       });
 
       // Métadonnées facultatives
@@ -122,6 +149,7 @@ export const TransferService = {
         type: "DEBIT",
         amount,
         description: `Virement interne sortant${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,
       });
 
       // Transaction crédit
@@ -130,6 +158,7 @@ export const TransferService = {
         type: "CREDIT",
         amount,
         description: `Virement interne entrant${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,    
       });
 
       await db.exec("COMMIT");
@@ -169,96 +198,219 @@ export const TransferService = {
    * @param {string} payload.description - Message optionnel
    * @param {string} payload.frequency - Fréquence
    */
-  async createInteracTransfer(payload) {
+async createInteracTransfer(payload) {
+  const {
+    userId,
+    fromAccountId,
+    recipientEmail,
+    recipientFirstName,
+    recipientLastName,
+    amount,
+    date,
+    description,
+    frequency,
+    isExternalRecipient,
+  } = payload;
 
-    const { userId, fromAccountId, toClientId, amount, description, frequency } = payload;
+  const createdAt = normalizeSqlDate(date);
+  const cleanEmail = String(recipientEmail ?? "").trim().toLowerCase();
+  const cleanFirstName = String(recipientFirstName ?? "").trim();
+  const cleanLastName = String(recipientLastName ?? "").trim();
 
-    if (!userId) return { ok: false, status: 401, error: "Non authentifié" };
+  if (!userId) {
+    return { ok: false, status: 401, error: "Non authentifié" };
+  }
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return { ok: false, status: 400, error: "Montant invalide" };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, status: 400, error: "Montant invalide" };
+  }
+
+  if (!fromAccountId || !cleanEmail) {
+    return {
+      ok: false,
+      status: 400,
+      error: "fromAccountId / recipientEmail manquants",
+    };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleanEmail)) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Adresse email invalide",
+    };
+  }
+
+  if (isExternalRecipient) {
+    if (!cleanFirstName) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Le prénom du destinataire externe est obligatoire",
+      };
     }
 
-    if (!fromAccountId || !toClientId) {
-      return { ok: false, status: 400, error: "fromAccountId / toClientId manquants" };
+    if (!cleanLastName) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Le nom du destinataire externe est obligatoire",
+      };
     }
+  }
 
-    const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
-    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
+  const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
+  if (!from) {
+    return { ok: false, status: 404, error: "Compte source introuvable" };
+  }
 
-    const to = await AccountDAO.findCheckingByClientId(toClientId);
-    if (!to) return { ok: false, status: 404, error: "Compte courant du destinataire introuvable" };
+  if (Number(from.balance) < amount) {
+    return { ok: false, status: 400, error: "Solde insuffisant" };
+  }
 
-    if (from.id === to.id) {
-      return { ok: false, status: 400, error: "Impossible de transférer vers le même compte" };
-    }
+  try {
+    await db.exec("BEGIN");
 
-    if (Number(from.balance) < amount) {
-      return { ok: false, status: 400, error: "Solde insuffisant" };
-    }
+    let transfer;
+    let credit = null;
+    let recipient = null;
+    const newFromBalance = Number(from.balance) - amount;
 
-    try {
+    await AccountDAO.updateBalance(from.id, newFromBalance);
 
-      await db.exec("BEGIN");
+    if (isExternalRecipient) {
+      // Cas simulation externe :
+      // on débite seulement le compte source
+      // on crée quand même une trace technique dans transfers
+      transfer = await TransferDAO.create({
+        fromAccountId: from.id,
+        toAccountId: from.id,
+        amount,
+        createdAt,
+      });
 
-      const receivedUser = await UserDAO.findById(toClientId);
+      recipient = {
+        first_name: cleanFirstName,
+        last_name: cleanLastName,
+        email: cleanEmail,
+        external: true,
+      };
+    } else {
+      // Cas client existant choisi dans la liste : comportement normal
+      const recipientUser = await UserDAO.findByEmail(cleanEmail);
 
-      const newFromBalance = Number(from.balance) - amount;
+      if (!recipientUser) {
+        await db.exec("ROLLBACK");
+        return {
+          ok: false,
+          status: 404,
+          error: "Aucun client trouvé avec cet email",
+        };
+      }
+
+      if (recipientUser.role !== "client") {
+        await db.exec("ROLLBACK");
+        return {
+          ok: false,
+          status: 400,
+          error: "Le destinataire doit être un client",
+        };
+      }
+
+      if (recipientUser.id === userId) {
+        await db.exec("ROLLBACK");
+        return {
+          ok: false,
+          status: 400,
+          error: "Impossible d’envoyer un Interac à vous-même",
+        };
+      }
+
+      const to = await AccountDAO.findCheckingByClientId(recipientUser.id);
+      if (!to) {
+        await db.exec("ROLLBACK");
+        return {
+          ok: false,
+          status: 404,
+          error: "Compte chèque du destinataire introuvable",
+        };
+      }
+
       const newToBalance = Number(to.balance) + amount;
 
-      await AccountDAO.updateBalance(from.id, newFromBalance);
       await AccountDAO.updateBalance(to.id, newToBalance);
 
-      const transfer = await TransferDAO.create({
+      transfer = await TransferDAO.create({
         fromAccountId: from.id,
         toAccountId: to.id,
         amount,
+        createdAt,
       });
 
+      const senderUser = await UserDAO.findById(userId);
       const desc = description ? `: ${String(description).trim()}` : "";
+      const metaStr = frequency ? ` (freq=${frequency})` : "";
 
-      const debit = await TransactionDAO.create({
-        accountId: from.id,
-        type: "DEBIT",
-        amount,
-        description: `Interac envoyé → ${receivedUser.first_name}${desc}`,
-      });
-
-      const credit = await TransactionDAO.create({
+      credit = await TransactionDAO.create({
         accountId: to.id,
         type: "CREDIT",
         amount,
-        description: `Interac reçu ← ${userId.first_name} ${desc}`,
+        description: `Interac reçu de ${senderUser.email}${desc}${metaStr}`,
+        createdAt,
       });
 
-      await db.exec("COMMIT");
-
-      return {
-        ok: true,
-        status: 201,
-        data: {
-          transfer,
-          debit,
-          credit,
-          toAccountId: to.id,
-          balances: { from: newFromBalance, to: newToBalance },
-        },
-      };
-
-    } catch (e) {
-
-      try {
-        await db.exec("ROLLBACK");
-      } catch (_) {}
-
-      return {
-        ok: false,
-        status: 500,
-        error: "Erreur serveur pendant le virement Interac",
-        details: String(e?.message ?? e),
+      recipient = {
+        id: recipientUser.id,
+        first_name: recipientUser.first_name,
+        last_name: recipientUser.last_name,
+        email: recipientUser.email,
+        external: false,
       };
     }
-  },
+
+    const desc = description ? `: ${String(description).trim()}` : "";
+    const metaStr = frequency ? ` (freq=${frequency})` : "";
+
+    const recipientDisplayName = isExternalRecipient
+      ? `${cleanFirstName} ${cleanLastName}`.trim()
+      : `${recipient?.first_name ?? ""} ${recipient?.last_name ?? ""}`.trim();
+
+    const debit = await TransactionDAO.create({
+      accountId: from.id,
+      type: "DEBIT",
+      amount,
+      description: recipientDisplayName
+        ? `Interac envoyé à ${recipientDisplayName}${desc}${metaStr}`
+        : `Interac envoyé${desc}${metaStr}`,
+      createdAt,
+});
+
+    await db.exec("COMMIT");
+
+    return {
+      ok: true,
+      status: 201,
+      data: {
+        transfer,
+        debit,
+        credit,
+        recipient,
+        balances: {
+          from: newFromBalance,
+        },
+      },
+    };
+  } catch (e) {
+    await db.exec("ROLLBACK");
+
+    return {
+      ok: false,
+      status: 500,
+      error: "Erreur serveur pendant le virement Interac",
+    };
+  }
+},
 
   /**
    * Paiement d'une facture vers un bénéficiaire
@@ -286,6 +438,8 @@ export const TransferService = {
       description,
     } = payload;
 
+    const createdAt = normalizeSqlDate(date);
+
     if (!Number.isFinite(amount) || amount <= 0) {
       return { ok: false, status: 400, error: "Montant invalide" };
     }
@@ -311,11 +465,14 @@ export const TransferService = {
       const newFromBalance = Number(from.balance) - amount;
       await AccountDAO.updateBalance(from.id, newFromBalance);
 
+      const metaStr = frequency ? ` (freq=${frequency})` : "";
+
       const debit = await TransactionDAO.create({
         accountId: from.id,
         type: "DEBIT",
         amount,
-        description: `Paiement facture à ${beneficiary.name}${description ? `: ${description}` : ""}`,
+        description: `Paiement facture à ${beneficiary.name}${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,
       });
 
       await db.exec("COMMIT");
@@ -334,7 +491,11 @@ export const TransferService = {
 
       await db.exec("ROLLBACK");
 
-      return { ok: false, status: 500, error: "Erreur serveur pendant le paiement" };
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant le paiement",
+      };
     }
   }
 };

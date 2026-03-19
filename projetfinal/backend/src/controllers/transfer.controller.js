@@ -42,10 +42,20 @@ export const TransferController = {
     // Construction du payload à envoyer au service
     const payload = {
       userId: req.user?.id,
-      fromAccountId: req.body.fromAccountId ?? req.body.from_account_id,
-      toClientId: req.body.toClientId ?? req.body.to_client_id,
+      fromAccountId: Number(req.body.fromAccountId ?? req.body.from_account_id),
+      recipientEmail:
+      req.body.recipientEmail ??
+      req.body.recipient_email ??
+      req.body.email,
+      recipientFirstName:
+      req.body.recipientFirstName ?? req.body.recipient_first_name,
+      recipientLastName:
+      req.body.recipientLastName ?? req.body.recipient_last_name,
       amount: Number(req.body.amount),
+      date: req.body.date,
+      frequency: req.body.frequency,
       description: req.body.description,
+      isExternalRecipient: Boolean(req.body.isExternalRecipient),
     };
 
     // Appel au service métier
@@ -102,7 +112,7 @@ export const TransferController = {
     // Réponse HTTP
     return res
       .status(result.status)
-      .json(result.ok ? { data: result.data } : { error: result.error });
+      .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
   },
 };
 
@@ -160,5 +170,5 @@ export const payBill = async (req, res) => {
   // Réponse HTTP
   return res
     .status(result.status)
-    .json(result.ok ? { data: result.data } : { error: result.error });
+    .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
 };

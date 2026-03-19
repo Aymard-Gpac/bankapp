@@ -106,15 +106,21 @@ export const TransactionDAO = {
    * //   created_at: "2026-03-04T12:10:00Z"
    * // }
    */
-  create({ accountId, type, amount, description }) {
+  async create({ accountId, type, amount, description, createdAt }) {
+    // Si aucune date n’est fournie, on garde la date courante
+    const now = new Date();
+    const safeCreatedAt =
+      createdAt ??
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
     // Insertion de la transaction dans la base
-    const r = db.run(
-      "INSERT INTO transactions (account_id, type, amount, description) VALUES (?, ?, ?, ?)",
+    const r = await db.run(
+      "INSERT INTO transactions (account_id, type, amount, description, created_at) VALUES (?, ?, ?, ?, ?)",
       accountId,
       type,
       amount,
-      description ?? null
+      description ?? null,
+      safeCreatedAt
     );
 
     // Récupération de la transaction créée

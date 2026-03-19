@@ -43,12 +43,18 @@ export const TransferDAO = {
    * //   created_at: "2026-03-04T13:00:00Z"
    * // }
    */
-  async create({ fromAccountId, toAccountId, amount }) {
+  async create({ fromAccountId, toAccountId, amount, createdAt }) {
+    const now = new Date();
+    const safeCreatedAt =
+      createdAt ??
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+
     const r = await db.run(
-      "INSERT INTO transfers (from_account_id, to_account_id, amount) VALUES (?, ?, ?)",
+      "INSERT INTO transfers (from_account_id, to_account_id, amount, created_at) VALUES (?, ?, ?, ?)",
       fromAccountId,
       toAccountId,
-      amount
+      amount,
+      safeCreatedAt
     );
 
     // Retourne le virement nouvellement créé

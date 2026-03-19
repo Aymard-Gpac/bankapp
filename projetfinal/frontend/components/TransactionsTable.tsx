@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Table,
   TableBody,
@@ -5,15 +7,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "./ui/table";
+import { cn, formatAmount, formatDateTime, getTransactionStatus, parseISODate, removeSpecialCharacters } from "@/lib/utils";
 import { transactionCategoryStyles } from "@/constants";
-import {
-  cn,
-  formatAmount,
-  formatDateTime,
-  getTransactionStatus,
-  removeSpecialCharacters,
-} from "@/lib/utils";
 import { CategoryBadgeProps, Transaction } from "@/types";
 
 /**
@@ -154,8 +150,9 @@ const TransactionsTable = ({
            * selon la forme des données reçues.
            */
           const transactionDate = t.created_at ?? t.date;
+          const parsedTransactionDate = parseISODate(transactionDate) ?? new Date();
 
-          const status = getTransactionStatus(new Date(transactionDate));
+          const status = getTransactionStatus(parsedTransactionDate);
           const amount = formatAmount(t.amount);
 
           const isDebit = t.type === "DEBIT";
@@ -193,7 +190,7 @@ const TransactionsTable = ({
               </TableCell>
 
               <TableCell className="min-w-32 pl-2 pr-10">
-                {formatDateTime(new Date(transactionDate)).dateTime}
+                {formatDateTime(parsedTransactionDate).dateTime}
               </TableCell>
 
               {/* =========================

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { parseISODate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Account, RecentTransactionsProps } from "@/types";
 import { BankTabItem } from "./BankTabItem";
@@ -20,7 +21,8 @@ const RecentTransactions = ({
 
   const getTxTime = (t: any) => {
     const raw = t.createdAt ?? t.created_at ?? t.date ?? t.$createdAt ?? t.$created_at;
-    const ms = raw ? new Date(raw).getTime() : 0;
+    const parsed = parseISODate(raw);
+    const ms = parsed ? parsed.getTime() : 0;
     return Number.isFinite(ms) ? ms : 0;
   };
 
