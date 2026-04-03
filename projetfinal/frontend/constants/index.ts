@@ -26,6 +26,11 @@ export const sidebarLinks = [
     route: "/student",
     label: "Liste client",
   },
+  {
+  imgURL: "/icons/trasaction.svg",
+  route: "/future-transactions",
+  label: "Transactions futures",
+},
 ];
 
 

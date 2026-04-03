@@ -70,7 +70,6 @@ const getMovementLabel = (type?: string | null) =>
  * =========================
  * AJOUT
  * =========================
- * J'étends les props du composant sans casser l'existant.
  *
  * - transactions : données du tableau
  * - showAccountColumn : affiche ou non la colonne "Compte"

@@ -68,7 +68,36 @@ export async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+    CREATE TABLE IF NOT EXISTS scheduled_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      kind TEXT NOT NULL, -- internal | interac | bill
+      from_account_id INTEGER NOT NULL,
+      to_account_id INTEGER,
+      beneficiary_id INTEGER,
+      recipient_email TEXT,
+      recipient_first_name TEXT,
+      recipient_last_name TEXT,
+      is_external_recipient INTEGER DEFAULT 0,
+      amount REAL NOT NULL,
+      frequency TEXT NOT NULL, -- weekly | monthly
+      next_run_date DATETIME NOT NULL,
+      last_run_at DATETIME,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'active', -- active | cancelled
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (from_account_id) REFERENCES accounts(id),
+      FOREIGN KEY (to_account_id) REFERENCES accounts(id),
+      FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries(id)
+    );
 
+    CREATE INDEX IF NOT EXISTS idx_scheduled_transactions_user_id
+      ON scheduled_transactions(user_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_scheduled_transactions_status_next_run
+      ON scheduled_transactions(status, next_run_date);
+    
     CREATE TABLE IF NOT EXISTS cards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       account_id INTEGER NOT NULL,

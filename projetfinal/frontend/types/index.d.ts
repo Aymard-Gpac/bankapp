@@ -171,6 +171,33 @@ export type AddFundingSourceParams = {
   bankName: string;
 };
 
+export type ScheduledTransaction = {
+  id: number;
+  user_id: number;
+  kind: "internal" | "interac" | "bill";
+  from_account_id: number;
+  to_account_id?: number | null;
+  beneficiary_id?: number | null;
+  recipient_email?: string | null;
+  recipient_first_name?: string | null;
+  recipient_last_name?: string | null;
+  is_external_recipient?: number | boolean;
+  amount: number;
+  frequency: "weekly" | "monthly";
+  next_run_date: string;
+  last_run_at?: string | null;
+  description?: string | null;
+  status: "active" | "cancelled";
+  created_at?: string;
+  source_account_name?: string;
+  destination_account_name?: string;
+  beneficiary_name?: string;
+  interac_recipient_name?: string | null;
+  recipient_first_name?: string | null;
+  recipient_last_name?: string | null;
+  recipient_email?: string | null;
+};
+
 // ========================================
 // Component Props (✅ accept User | null)
 // ========================================
