@@ -4,7 +4,7 @@ import qs from "query-string";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-// ✅ Importe tes types si tu les as dans "@/types"
+//  Importe tes types si tu les as dans "@/types"
 import type { AccountType, Transaction, CategoryCount } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
@@ -81,7 +81,7 @@ export function parseISODate(dateStr?: string | number | Date | null) {
   // si c'est un format YYYY-MM-DD
   if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const [y, m, d] = dateStr.split("-").map(Number);
-    return new Date(y, m - 1, d); // ✅ local date, pas de bug timezone
+    return new Date(y, m - 1, d); //  local date, pas de bug timezone
   }
 
   // si c'est un format SQLite "YYYY-MM-DD HH:mm:ss"
@@ -141,7 +141,7 @@ export function formUrlQuery({ params, key, value }: UrlQueryParams) {
   const currentUrl = qs.parse(params);
   currentUrl[key] = value;
 
-  // ✅ SSR safe
+  //  SSR safe
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : "";
 
@@ -241,7 +241,7 @@ export function extractCustomerIdFromUrl(url: string) {
 
 // ============================
 // BASE64 (not "encryption" - just obfuscation)
-// ✅ Works server-side (Next) and client-side if Buffer exists.
+// Works server-side (Next) and client-side if Buffer exists.
 // If you get Buffer undefined in browser, tell me and I’ll give browser-only version.
 // ============================
 export function encryptId(id: string) {

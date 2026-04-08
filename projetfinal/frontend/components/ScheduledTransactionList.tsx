@@ -1,7 +1,7 @@
 "use client";
 
 import { ScheduledTransaction } from "@/types";
-
+import { formatDateTime, parseISODate } from "@/lib/utils";
 type Props = {
   transactions: ScheduledTransaction[];
   annulationHandler: (transactionId: number) => Promise<void>;
@@ -75,19 +75,13 @@ function getFrequencyBadgeClasses(frequency: ScheduledTransaction["frequency"]) 
 function formatDate(dateString?: string | null) {
   if (!dateString) return "Date inconnue";
 
-  const date = new Date(dateString.replace(" ", "T"));
-
-  if (Number.isNaN(date.getTime())) {
+  const parseDate = parseISODate(dateString);
+  if(!parseDate){
     return dateString;
   }
+  return formatDateTime(parseDate).dateTime;
 
-  return date.toLocaleString("fr-CA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+
 }
 
 /**

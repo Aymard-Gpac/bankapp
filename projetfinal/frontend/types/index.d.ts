@@ -197,16 +197,25 @@ export type ScheduledTransaction = {
   recipient_last_name?: string | null;
   recipient_email?: string | null;
 };
+export type FinancialProduct = {
+  id: string;
+  title: string;
+  category: "Épargne" | "Crédit" | "Investissement" | "Services";
+  description: string;
+  features: string[];
+  target: string;
+  icon: string;
+};
 
 // ========================================
-// Component Props (✅ accept User | null)
+// Component Props ( accept User | null)
 // ========================================
 
 declare interface HeaderBoxProps {
   type?: "title" | "greeting";
   title: string;
   subtext?: string;
-  userName?: string; // ✅ string only
+  userName?: string; //  string only
 }
 
 declare interface FooterProps {
