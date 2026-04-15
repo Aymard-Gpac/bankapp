@@ -17,7 +17,7 @@ const HistoryPage = async () => {
   const history = await getClientTransactionHistoryServer(clientId);
 
   return (
-    <section className="w-full">
+    <section className="flex h-[calc(100vh-72px)] min-h-0 w-full flex-col gap-8 overflow-y-auto px-5 py-7 sm:px-8 lg:py-12">
       <div className="mx-auto w-full max-w-7xl px-6 py-8">
         <HeaderBox
           title="Historique des transactions"

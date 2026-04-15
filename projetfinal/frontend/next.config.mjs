@@ -16,7 +16,7 @@ const nextConfig = {
       // (optionnel) si tu veux aussi /clients/7 -> /student/clients/7
       {
         source: "/client/:clientId/my-banks",
-        destination: "/student/clients/:clientId/my-banks",
+        destination: "/my-banks",
       },
 
       // // (optionnel) si tu veux /clients -> /student/clients

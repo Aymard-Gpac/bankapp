@@ -66,6 +66,7 @@ const AuthForm = ({ type }: { type: AuthFormType }) => {
       });
 
       document.cookie = `token=${response.token}; path=/; max-age=86400`;
+      localStorage.setItem("token", response.token);
       const role = response?.user?.role;
 
       if (role === "client") {

@@ -68,4 +68,8 @@ export async function logoutUser() {
     method: "POST",
     credentials: "include",
   });
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+    document.cookie = "token=; path=/; max-age=0";
+  }
 }

@@ -66,3 +66,27 @@ export async function getClientAccounts(clientId: string | number) {
   if (!res.ok) throw new Error(`Failed to load accounts ${res.status}: ${text}`);
   return JSON.parse(text) as { data: Account[]; totalBanks: number; totalCurrentBalance: number };
 }
+
+export async function closeClientAccount(
+  clientId: number,
+  accountId: number
+) {
+  const res = await fetch(
+    `${API_URL}/api/clients/${clientId}/accounts/${accountId}/close`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const json = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(json?.error || "Impossible de fermer ce compte");
+  }
+
+  return json;
+}

@@ -659,7 +659,27 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête POST /api/clients// Body: {//   "first_name": "Jean",//   "last_name": "Dupont",//   "email": "jean@email.com",//   "address": "123 rue Principale",//   "city": "Montréal",//   "state": "QC",//   "postal_code": "H1H 1H1"// }// Réponse succès (201)// {//   "userId": 123,//   "message": "Client created + 3 accounts created"// }// Réponse erreur (400)// {//   "error": "first_name, last_name, email are required"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête POST /api/clients
+// Body: {
+//   "first_name": "Jean",
+//   "last_name": "Dupont",
+//   "email": "jean@email.com",
+//   "address": "123 rue Principale",
+//   "city": "Montréal",
+//   "state": "QC",
+//   "postal_code": "H1H 1H1"
+// }
+
+// Réponse succès (201)
+// {
+//   "userId": 123,
+//   "message": "Client created + 3 accounts created"
+// }
+
+// Réponse erreur (400)
+// {
+//   "error": "first_name, last_name, email are required"
+// }</code></pre>
 
 
 
@@ -944,7 +964,17 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête DELETE /api/clients/123// Réponse succès (200)// {//   "message": "Deleted"// }// Réponse erreur (404)// {//   "error": "Client not found"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête DELETE /api/clients/123
+
+// Réponse succès (200)
+// {
+//   "message": "Deleted"
+// }
+
+// Réponse erreur (404)
+// {
+//   "error": "Client not found"
+// }</code></pre>
 
 
 
@@ -1229,7 +1259,27 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête GET /api/clients/123// Réponse succès (200)// {//   "id": 123,//   "first_name": "Jean",//   "last_name": "Dupont",//   "email": "jean@email.com",//   "address": "123 rue Principale",//   "city": "Montréal",//   "state": "QC",//   "postal_code": "H1H 1H1",//   "date_of_birth": "1990-01-01",//   "role": "client",//   "created_at": "2024-01-01T00:00:00Z"// }// Réponse erreur (404)// {//   "error": "Client not found"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête GET /api/clients/123
+
+// Réponse succès (200)
+// {
+//   "id": 123,
+//   "first_name": "Jean",
+//   "last_name": "Dupont",
+//   "email": "jean@email.com",
+//   "address": "123 rue Principale",
+//   "city": "Montréal",
+//   "state": "QC",
+//   "postal_code": "H1H 1H1",
+//   "date_of_birth": "1990-01-01",
+//   "role": "client",
+//   "created_at": "2024-01-01T00:00:00Z"
+// }
+
+// Réponse erreur (404)
+// {
+//   "error": "Client not found"
+// }</code></pre>
 
 
 
@@ -1537,7 +1587,27 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête GET /api/clients/current/123// Réponse succès (200)// {//   "id": 123,//   "first_name": "Jean",//   "last_name": "Dupont",//   "email": "jean@email.com",//   "role": "client",//   ...autres données// }// Réponse erreur (400)// {//   "error": "Invalid clientId"// }// Réponse erreur (404) - via le service// {//   "error": "Client not found"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête GET /api/clients/current/123
+
+// Réponse succès (200)
+// {
+//   "id": 123,
+//   "first_name": "Jean",
+//   "last_name": "Dupont",
+//   "email": "jean@email.com",
+//   "role": "client",
+//   ...autres données
+// }
+
+// Réponse erreur (400)
+// {
+//   "error": "Invalid clientId"
+// }
+
+// Réponse erreur (404) - via le service
+// {
+//   "error": "Client not found"
+// }</code></pre>
 
 
 
@@ -1881,7 +1951,13 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête GET /api/clients?limit=20&amp;offset=40// Réponse succès (200)// [//   { "id": 123, "first_name": "Jean", "last_name": "Dupont", "email": "jean@email.com" },//   { "id": 124, "first_name": "Marie", "last_name": "Lambert", "email": "marie@email.com" }// ]</code></pre>
+    <pre class="prettyprint"><code>// Requête GET /api/clients?limit=20&amp;offset=40
+
+// Réponse succès (200)
+// [
+//   { "id": 123, "first_name": "Jean", "last_name": "Dupont", "email": "jean@email.com" },
+//   { "id": 124, "first_name": "Marie", "last_name": "Lambert", "email": "marie@email.com" }
+// ]</code></pre>
 
 
 
@@ -2448,7 +2524,21 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête PUT /api/clients/123// Body: {//   "first_name": "Jean-Pierre",//   "address": "456 Nouvelle Rue"// }// Réponse succès (200)// {//   "message": "Updated"// }// Réponse erreur (409) - email déjà utilisé// {//   "error": "Email already used"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête PUT /api/clients/123
+// Body: {
+//   "first_name": "Jean-Pierre",
+//   "address": "456 Nouvelle Rue"
+// }
+
+// Réponse succès (200)
+// {
+//   "message": "Updated"
+// }
+
+// Réponse erreur (409) - email déjà utilisé
+// {
+//   "error": "Email already used"
+// }</code></pre>
 
 
 
@@ -2468,13 +2558,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CheckDepositDAO">CheckDepositDAO</a></li><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#extractAmountFromQrCode">extractAmountFromQrCode</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Mon Mar 16 2026 20:45:17 GMT-0400 (heure d’été de l’Est nord-américain)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Apr 15 2026 12:25:22 GMT-0400 (heure d’été de l’Est nord-américain)
 </footer>
 
 <script> prettyPrint(); </script>

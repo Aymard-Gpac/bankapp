@@ -376,9 +376,19 @@ inscription, connexion, récupération du profil</p></div>
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Récupérer le profilconst result = await AuthService.getCurrentUser(123);if (result.ok) {  console.log(`Profil:`, result.data);  // Afficher: { id: 123, first_name: "Jean", email: "...", ... }} else {  console.log(`Erreur ${result.status}: ${result.error}`);}</code></pre>
+    <pre class="prettyprint"><code>// Récupérer le profil
+const result = await AuthService.getCurrentUser(123);
 
-    <pre class="prettyprint"><code>// Utilisateur non trouvéconst result = await AuthService.getCurrentUser(999);// result = { ok: false, status: 404, error: "User not found" }</code></pre>
+if (result.ok) {
+  console.log(`Profil:`, result.data);
+  // Afficher: { id: 123, first_name: "Jean", email: "...", ... }
+} else {
+  console.log(`Erreur ${result.status}: ${result.error}`);
+}</code></pre>
+
+    <pre class="prettyprint"><code>// Utilisateur non trouvé
+const result = await AuthService.getCurrentUser(999);
+// result = { ok: false, status: 404, error: "User not found" }</code></pre>
 
 
 
@@ -823,9 +833,26 @@ inscription, connexion, récupération du profil</p></div>
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Connexion réussieconst result = await AuthService.login({  email: "jean.dupont@email.com",  password: "Password123!"});if (result.ok) {  // Stocker le token (localStorage, cookie, etc.)  localStorage.setItem('token', result.data.token);  console.log(`Connecté: ${result.data.user.email}`);} else {  console.log(`Erreur ${result.status}: ${result.error}`);}</code></pre>
+    <pre class="prettyprint"><code>// Connexion réussie
+const result = await AuthService.login({
+  email: "jean.dupont@email.com",
+  password: "Password123!"
+});
 
-    <pre class="prettyprint"><code>// Erreur: identifiants invalidesconst result = await AuthService.login({  email: "wrong@email.com",  password: "wrongpass"});// result = { ok: false, status: 401, error: "Invalid credentials" }</code></pre>
+if (result.ok) {
+  // Stocker le token (localStorage, cookie, etc.)
+  localStorage.setItem('token', result.data.token);
+  console.log(`Connecté: ${result.data.user.email}`);
+} else {
+  console.log(`Erreur ${result.status}: ${result.error}`);
+}</code></pre>
+
+    <pre class="prettyprint"><code>// Erreur: identifiants invalides
+const result = await AuthService.login({
+  email: "wrong@email.com",
+  password: "wrongpass"
+});
+// result = { ok: false, status: 401, error: "Invalid credentials" }</code></pre>
 
 
 
@@ -1394,9 +1421,32 @@ inscription, connexion, récupération du profil</p></div>
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Inscription réussieconst result = await AuthService.register({  first_name: "Jean",  last_name: "Dupont",  address: "123 rue Principale",  city: "Montréal",  state: "QC",  postal_code: "H1H 1H1",  date_of_birth: "1990-01-01",  ssn: "123-45-6789",  email: "jean.dupont@email.com",  password: "Password123!"});if (result.ok) {  console.log(`Utilisateur créé: ${result.data.id}`);} else {  console.log(`Erreur ${result.status}: ${result.error}`);}</code></pre>
+    <pre class="prettyprint"><code>// Inscription réussie
+const result = await AuthService.register({
+  first_name: "Jean",
+  last_name: "Dupont",
+  address: "123 rue Principale",
+  city: "Montréal",
+  state: "QC",
+  postal_code: "H1H 1H1",
+  date_of_birth: "1990-01-01",
+  ssn: "123-45-6789",
+  email: "jean.dupont@email.com",
+  password: "Password123!"
+});
 
-    <pre class="prettyprint"><code>// Erreur: champ manquantconst result = await AuthService.register({  email: "test@test.com"  // autres champs manquants});// result = { ok: false, status: 400, error: "first_name is required" }</code></pre>
+if (result.ok) {
+  console.log(`Utilisateur créé: ${result.data.id}`);
+} else {
+  console.log(`Erreur ${result.status}: ${result.error}`);
+}</code></pre>
+
+    <pre class="prettyprint"><code>// Erreur: champ manquant
+const result = await AuthService.register({
+  email: "test@test.com"
+  // autres champs manquants
+});
+// result = { ok: false, status: 400, error: "first_name is required" }</code></pre>
 
 
 
@@ -1416,13 +1466,13 @@ inscription, connexion, récupération du profil</p></div>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CheckDepositDAO">CheckDepositDAO</a></li><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#extractAmountFromQrCode">extractAmountFromQrCode</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Mon Mar 16 2026 20:45:17 GMT-0400 (heure d’été de l’Est nord-américain)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Apr 15 2026 12:25:22 GMT-0400 (heure d’été de l’Est nord-américain)
 </footer>
 
 <script> prettyPrint(); </script>

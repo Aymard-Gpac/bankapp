@@ -42,10 +42,20 @@ export const TransferController = {
     // Construction du payload à envoyer au service
     const payload = {
       userId: req.user?.id,
-      fromAccountId: req.body.fromAccountId ?? req.body.from_account_id,
-      toClientId: req.body.toClientId ?? req.body.to_client_id,
+      fromAccountId: Number(req.body.fromAccountId ?? req.body.from_account_id),
+      recipientEmail:
+      req.body.recipientEmail ??
+      req.body.recipient_email ??
+      req.body.email,
+      recipientFirstName:
+      req.body.recipientFirstName ?? req.body.recipient_first_name,
+      recipientLastName:
+      req.body.recipientLastName ?? req.body.recipient_last_name,
       amount: Number(req.body.amount),
+      date: req.body.date,
+      frequency: req.body.frequency,
       description: req.body.description,
+      isExternalRecipient: Boolean(req.body.isExternalRecipient),
     };
 
     // Appel au service métier
@@ -102,8 +112,110 @@ export const TransferController = {
     // Réponse HTTP
     return res
       .status(result.status)
-      .json(result.ok ? { data: result.data } : { error: result.error });
+      .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
   },
+    
+
+  /**
+   * Lance manuellement le traitement des transactions programmées
+   * arrivées à échéance.
+   *
+   * Cette méthode appelle le service qui :
+   * - récupère les transactions récurrentes actives
+   * - vérifie celles dont la date est arrivée
+   * - les exécute automatiquement
+   * - met à jour leur prochaine date d’exécution
+   *
+   * Utilité :
+   * - tester la fonctionnalité sans cron job
+   * - déclencher manuellement le traitement via une route HTTP
+   * - préparer l’automatisation future
+   *
+   * @async
+   * @function processDueScheduledTransactions
+   * @param {Object} req - Requête Express
+   * @param {Object} res - Réponse Express
+   * @returns {Promise<Object>} Réponse HTTP avec le résultat du traitement
+   *
+   * @example
+   * // POST /api/transfers/scheduled/process-due
+   *
+   * // Réponse succès (200)
+   * // {
+   * //   "data": [
+   * //     { "id": 1, "ok": true },
+   * //     { "id": 2, "ok": false, "error": "Solde insuffisant" }
+   * //   ]
+   * // }
+   */
+  async processDueScheduledTransactions(req, res) {
+
+    // Appel au service métier qui traite toutes les
+    // transactions programmées arrivées à échéance.
+    const result = await TransferService.processDueScheduledTransactions();
+
+    // Retour de la réponse HTTP
+    return res
+      .status(result.status)
+      .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
+  },
+    
+
+  /**
+   * Récupère la liste des transactions programmées du client connecté
+   *
+   * Cette méthode sert à alimenter une future page frontend
+   * comme "Transactions futures" ou "Paiements récurrents".
+   *
+   * @async
+   * @function getScheduledTransactions
+   * @param {Object} req - Requête Express
+   * @param {Object} req.user - Utilisateur authentifié
+   * @param {number} req.user.id - ID du client connecté
+   * @param {Object} res - Réponse Express
+   * @returns {Promise<Object>} Réponse HTTP
+   *
+   * @example
+   * // GET /api/transfers/scheduled
+   */
+  async getScheduledTransactions(req, res) {
+    const result = await TransferService.getScheduledTransactions(req.user?.id);
+
+    return res
+      .status(result.status)
+      .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
+  },
+    
+
+  /**
+   * Annule une transaction programmée du client connecté
+   *
+   * Cette méthode reçoit l’ID depuis les paramètres de route,
+   * puis appelle le service métier pour mettre le statut à "cancelled".
+   *
+   * @async
+   * @function cancelScheduledTransaction
+   * @param {Object} req - Requête Express
+   * @param {Object} req.user - Utilisateur authentifié
+   * @param {number} req.user.id - ID du client connecté
+   * @param {Object} req.params - Paramètres de route
+   * @param {string} req.params.id - ID de la transaction programmée
+   * @param {Object} res - Réponse Express
+   * @returns {Promise<Object>} Réponse HTTP
+   *
+   * @example
+   * // PATCH /api/transfers/scheduled/12/cancel
+   */
+  async cancelScheduledTransaction(req, res) {
+    const result = await TransferService.cancelScheduledTransaction(
+      req.user?.id,
+      Number(req.params.id)
+    );
+
+    return res
+      .status(result.status)
+      .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
+  }
 };
 
 /**
@@ -160,5 +272,5 @@ export const payBill = async (req, res) => {
   // Réponse HTTP
   return res
     .status(result.status)
-    .json(result.ok ? { data: result.data } : { error: result.error });
+    .json(result.ok ? { data: result.data } : { error: result.error, details: result.details });
 };

@@ -98,6 +98,69 @@
 
         
             
+<h4 class="name" id="CheckDepositDAO"><span class="type-signature">(constant) </span>CheckDepositDAO<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    <p>DAO pour les dépôts de chèques simulés par photo.
+Cette couche ne contient que du SQL.</p>
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_check-deposit.model.js.html">models/check-deposit.model.js</a>, <a href="models_check-deposit.model.js.html#line7">line 7</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
 <h4 class="name" id="TransferController"><span class="type-signature">(constant) </span>TransferController<span class="type-signature"></span></h4>
 
 
@@ -163,6 +226,365 @@
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="cancelScheduledTransaction"><span class="type-signature">(async) </span>cancelScheduledTransaction<span class="signature">(req, res)</span><span class="type-signature"> &rarr; {Promise.&lt;Object>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Annule une transaction programmée du client connecté</p>
+<p>Cette méthode reçoit l’ID depuis les paramètres de route,
+puis appelle le service métier pour mettre le statut à &quot;cancelled&quot;.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Requête Express</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>user</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Utilisateur authentifié</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>ID du client connecté</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>params</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Paramètres de route</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>ID de la transaction programmée</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Réponse Express</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line190">line 190</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>Réponse HTTP</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Object></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>// PATCH /api/transfers/scheduled/12/cancel</code></pre>
+
+
 
         
             
@@ -631,7 +1053,20 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Requête POST /api/transfers/interac// Body:// {//   "fromAccountId": 1,//   "toClientId": 12,//   "amount": 100,//   "description": "Loyer"// }// Réponse succès (201)// {//   "transactionId": 55,//   "message": "Interac transfer successful"// }</code></pre>
+    <pre class="prettyprint"><code>// Requête POST /api/transfers/interac
+// Body:
+// {
+//   "fromAccountId": 1,
+//   "toClientId": 12,
+//   "amount": 100,
+//   "description": "Loyer"
+// }
+
+// Réponse succès (201)
+// {
+//   "transactionId": 55,
+//   "message": "Interac transfer successful"
+// }</code></pre>
 
 
 
@@ -1115,7 +1550,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line60">line 60</a>
+        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line70">line 70</a>
     </li></ul></dd>
     
 
@@ -1168,7 +1603,393 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// POST /api/transfers/internal// Body:// {//   "fromAccountId": 1,//   "toAccountId": 2,//   "amount": 200// }</code></pre>
+    <pre class="prettyprint"><code>// POST /api/transfers/internal
+// Body:
+// {
+//   "fromAccountId": 1,
+//   "toAccountId": 2,
+//   "amount": 200
+// }</code></pre>
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="extractAmountFromQrCode"><span class="type-signature"></span>extractAmountFromQrCode<span class="signature">()</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Extrait le montant encodé dans un QR simulé.</p>
+<p>Formats acceptés :</p>
+<ul>
+<li>BANKAPP-QR-1250</li>
+<li>BANKAPP-QR-1250.00</li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="services_check-deposit.service.js.html">services/check-deposit.service.js</a>, <a href="services_check-deposit.service.js.html#line22">line 22</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="getScheduledTransactions"><span class="type-signature">(async) </span>getScheduledTransactions<span class="signature">(req, res)</span><span class="type-signature"> &rarr; {Promise.&lt;Object>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Récupère la liste des transactions programmées du client connecté</p>
+<p>Cette méthode sert à alimenter une future page frontend
+comme &quot;Transactions futures&quot; ou &quot;Paiements récurrents&quot;.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Requête Express</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>user</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Utilisateur authentifié</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>ID du client connecté</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Réponse Express</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line164">line 164</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>Réponse HTTP</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Object></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>// GET /api/transfers/scheduled</code></pre>
 
 
 
@@ -1652,7 +2473,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line109">line 109</a>
+        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line221">line 221</a>
     </li></ul></dd>
     
 
@@ -1705,7 +2526,231 @@
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// POST /api/transfers/bill// Body:// {//   "fromAccountId": 1,//   "beneficiaryId": 5,//   "amount": 45,//   "description": "Internet"// }// Réponse succès (201)// {//   "data": {//     "transactionId": 88,//     "message": "Bill paid successfully"//   }// }</code></pre>
+    <pre class="prettyprint"><code>// POST /api/transfers/bill
+// Body:
+// {
+//   "fromAccountId": 1,
+//   "beneficiaryId": 5,
+//   "amount": 45,
+//   "description": "Internet"
+// }
+
+// Réponse succès (201)
+// {
+//   "data": {
+//     "transactionId": 88,
+//     "message": "Bill paid successfully"
+//   }
+// }</code></pre>
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="processDueScheduledTransactions"><span class="type-signature">(async) </span>processDueScheduledTransactions<span class="signature">(req, res)</span><span class="type-signature"> &rarr; {Promise.&lt;Object>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Lance manuellement le traitement des transactions programmées
+arrivées à échéance.</p>
+<p>Cette méthode appelle le service qui :</p>
+<ul>
+<li>récupère les transactions récurrentes actives</li>
+<li>vérifie celles dont la date est arrivée</li>
+<li>les exécute automatiquement</li>
+<li>met à jour leur prochaine date d’exécution</li>
+</ul>
+<p>Utilité :</p>
+<ul>
+<li>tester la fonctionnalité sans cron job</li>
+<li>déclencher manuellement le traitement via une route HTTP</li>
+<li>préparer l’automatisation future</li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Requête Express</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Réponse Express</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="controllers_transfer.controller.js.html">controllers/transfer.controller.js</a>, <a href="controllers_transfer.controller.js.html#line119">line 119</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>Réponse HTTP avec le résultat du traitement</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Object></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>// POST /api/transfers/scheduled/process-due
+
+// Réponse succès (200)
+// {
+//   "data": [
+//     { "id": 1, "ok": true },
+//     { "id": 2, "ok": false, "error": "Solde insuffisant" }
+//   ]
+// }</code></pre>
 
 
 
@@ -1725,13 +2770,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CheckDepositDAO">CheckDepositDAO</a></li><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#extractAmountFromQrCode">extractAmountFromQrCode</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Mon Mar 16 2026 20:45:17 GMT-0400 (heure d’été de l’Est nord-américain)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Apr 15 2026 12:25:22 GMT-0400 (heure d’été de l’Est nord-américain)
 </footer>
 
 <script> prettyPrint(); </script>

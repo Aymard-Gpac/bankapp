@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { createInternalTransfer, type Frequency } from "@/lib/actions/transactions.actions";
+import { getLocalDateInputValue } from "@/lib/utils";
 import { Account } from "@/types";
 
 type InternalTransferProps = {
@@ -14,7 +15,7 @@ const InternalTransfer = ({ accounts }: InternalTransferProps) => {
   const [amount, setAmount] = useState("0.00");
   const [fromAccountId, setFromAccountId] = useState<number | "">("");
   const [toAccountId, setToAccountId] = useState<number | "">("");
-  const [date, setDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState<string>(getLocalDateInputValue());
   const [frequency, setFrequency] = useState<Frequency>("once");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

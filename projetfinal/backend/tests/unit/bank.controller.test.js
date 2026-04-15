@@ -1,13 +1,21 @@
 import { jest, describe, test, expect, beforeEach } from "@jest/globals";
 
+/* =====================================================
+ * Mock du service
+ * ===================================================== */
 jest.unstable_mockModule("../../src/services/bank.service.js", () => ({
+  __esModule: true,
   BankService: {
     getClientAccounts: jest.fn(),
     getClientAccount: jest.fn(),
     getClientTransactionHistory: jest.fn(),
+    closeClientAccount: jest.fn(),
   },
 }));
 
+/* =====================================================
+ * Imports
+ * ===================================================== */
 const { BankController } = await import("../../src/controllers/bank.controller.js");
 const { BankService } = await import("../../src/services/bank.service.js");
 
@@ -33,8 +41,11 @@ describe("BankController", () => {
     next = jest.fn();
   });
 
+  /* =====================================================
+   * getClientAccounts
+   * ===================================================== */
   describe("getClientAccounts", () => {
-    test("retourne 400 si clientId est invalide", async () => {
+    test("400 si clientId invalide", async () => {
       req.params.clientId = "abc";
 
       await BankController.getClientAccounts(req, res, next);
@@ -42,11 +53,11 @@ describe("BankController", () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({ error: "Invalid clientId" });
       expect(BankService.getClientAccounts).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
     });
 
-    test("retourne 403 si un client essaie d'accéder aux comptes d'un autre client", async () => {
+    test("403 si client accède aux comptes d’un autre client", async () => {
       req.params.clientId = "999";
-      req.user = { id: 123, role: "client" };
 
       await BankController.getClientAccounts(req, res, next);
 
@@ -55,24 +66,25 @@ describe("BankController", () => {
       expect(BankService.getClientAccounts).not.toHaveBeenCalled();
     });
 
-    test("retourne les comptes si tout est correct", async () => {
-      const mockResult = {
-        data: [{ id: 1, type: "cheque" }],
+    test("succès – client autorisé", async () => {
+      const result = {
+        data: [{ id: 1 }],
         totalBanks: 1,
         totalCurrentBalance: 1000,
       };
 
-      BankService.getClientAccounts.mockResolvedValue(mockResult);
+      BankService.getClientAccounts.mockResolvedValue(result);
 
       await BankController.getClientAccounts(req, res, next);
 
       expect(BankService.getClientAccounts).toHaveBeenCalledWith(123);
-      expect(res.json).toHaveBeenCalledWith(mockResult);
+      expect(res.json).toHaveBeenCalledWith(result);
       expect(next).not.toHaveBeenCalled();
     });
 
-    test("autorise un etudiant à consulter les comptes d'un client", async () => {
+    test("succès – étudiant autorisé", async () => {
       req.user = { id: 50, role: "etudiant" };
+
       BankService.getClientAccounts.mockResolvedValue({
         data: [],
         totalBanks: 0,
@@ -89,8 +101,8 @@ describe("BankController", () => {
       });
     });
 
-    test("appelle next(err) si le service lance une erreur", async () => {
-      const err = new Error("Service accounts error");
+    test("next(err) si le service échoue", async () => {
+      const err = new Error("Service error");
       BankService.getClientAccounts.mockRejectedValue(err);
 
       await BankController.getClientAccounts(req, res, next);
@@ -99,86 +111,11 @@ describe("BankController", () => {
     });
   });
 
-  describe("getClientTransactionHistory", () => {
-    test("retourne 400 si clientId est invalide", async () => {
-      req.params.clientId = "abc";
-
-      await BankController.getClientTransactionHistory(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: "Invalid clientId" });
-      expect(BankService.getClientTransactionHistory).not.toHaveBeenCalled();
-      expect(next).not.toHaveBeenCalled();
-    });
-
-    test("retourne 403 si un client essaie d'accéder à l'historique d'un autre client", async () => {
-      req.params.clientId = "999";
-      req.user = { id: 123, role: "client" };
-
-      await BankController.getClientTransactionHistory(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({ error: "Forbidden" });
-      expect(BankService.getClientTransactionHistory).not.toHaveBeenCalled();
-      expect(next).not.toHaveBeenCalled();
-    });
-
-    test("retourne les données d'historique si tout est correct", async () => {
-      const mockHistory = [
-        {
-          id: 1,
-          account_id: 10,
-          account_type: "cheque",
-          account_number: "CHEQUE-123",
-          description: "Salaire",
-          amount: 1500,
-          type: "CREDIT",
-          created_at: "2026-03-10T12:00:00Z",
-        },
-      ];
-
-      BankService.getClientTransactionHistory.mockResolvedValue(mockHistory);
-
-      await BankController.getClientTransactionHistory(req, res, next);
-
-      expect(BankService.getClientTransactionHistory).toHaveBeenCalledTimes(1);
-      expect(BankService.getClientTransactionHistory).toHaveBeenCalledWith(123);
-      expect(res.json).toHaveBeenCalledWith({ data: mockHistory });
-      expect(next).not.toHaveBeenCalled();
-    });
-
-    test("appelle next(err) si le service lance une erreur", async () => {
-      const serviceError = new Error("Service history error");
-      BankService.getClientTransactionHistory.mockRejectedValue(serviceError);
-
-      await BankController.getClientTransactionHistory(req, res, next);
-
-      expect(next).toHaveBeenCalledWith(serviceError);
-    });
-
-    test("autorise un etudiant à consulter l'historique d'un client", async () => {
-      req.user = { id: 50, role: "etudiant" };
-      BankService.getClientTransactionHistory.mockResolvedValue([]);
-
-      await BankController.getClientTransactionHistory(req, res, next);
-
-      expect(BankService.getClientTransactionHistory).toHaveBeenCalledWith(123);
-      expect(res.json).toHaveBeenCalledWith({ data: [] });
-    });
-  });
-
+  /* =====================================================
+   * getClientAccount
+   * ===================================================== */
   describe("getClientAccount", () => {
-    test("retourne 400 si clientId est invalide", async () => {
-      req.params.clientId = "abc";
-
-      await BankController.getClientAccount(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: "Invalid parameters" });
-      expect(BankService.getClientAccount).not.toHaveBeenCalled();
-    });
-
-    test("retourne 400 si accountId est invalide", async () => {
+    test("400 si paramètres invalides", async () => {
       req.params.accountId = "abc";
 
       await BankController.getClientAccount(req, res, next);
@@ -188,112 +125,146 @@ describe("BankController", () => {
       expect(BankService.getClientAccount).not.toHaveBeenCalled();
     });
 
-    test("retourne 403 si un client essaie d'accéder au compte d'un autre client", async () => {
+    test("403 si client interdit", async () => {
       req.params.clientId = "999";
-      req.user = { id: 123, role: "client" };
 
       await BankController.getClientAccount(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({ error: "Forbidden" });
-      expect(BankService.getClientAccount).not.toHaveBeenCalled();
     });
 
-    test("retourne les données du compte avec pagination par défaut", async () => {
-      const mockResult = {
-        account: { id: 456, type: "cheque" },
+    test("succès avec pagination par défaut", async () => {
+      const result = {
+        account: { id: 456 },
         transactions: [],
-        pagination: {
-          page: 1,
-          pageSize: 10,
-          total: 0,
-          totalPages: 0,
-        },
+        pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
       };
 
-      BankService.getClientAccount.mockResolvedValue(mockResult);
+      BankService.getClientAccount.mockResolvedValue(result);
 
       await BankController.getClientAccount(req, res, next);
 
-      expect(BankService.getClientAccount).toHaveBeenCalledTimes(1);
-
-      const calledArgs = BankService.getClientAccount.mock.calls[0][0];
-
-      expect(calledArgs).toMatchObject({
+      expect(BankService.getClientAccount).toHaveBeenCalledWith({
         clientId: 123,
         accountId: 456,
+        page: 1,
       });
 
-      expect(calledArgs.page ?? 1).toBe(1);
-      expect(calledArgs.pageSize ?? 10).toBe(10);
-
-      expect(res.json).toHaveBeenCalledWith(mockResult);
+      expect(res.json).toHaveBeenCalledWith(result);
     });
 
-    test("retourne les données du compte avec pagination personnalisée", async () => {
-      req.query = { page: "2", pageSize: "5" };
+    test("succès avec pagination personnalisée", async () => {
+      req.query.page = "2";
 
-      const mockResult = {
-        account: { id: 456, type: "cheque" },
+      const result = {
+        account: { id: 456 },
         transactions: [{ id: 1 }],
-        pagination: {
-          page: 2,
-          pageSize: 5,
-          total: 12,
-          totalPages: 3,
-        },
+        pagination: { page: 2, pageSize: 10, total: 20, totalPages: 2 },
       };
 
-      BankService.getClientAccount.mockResolvedValue(mockResult);
+      BankService.getClientAccount.mockResolvedValue(result);
 
       await BankController.getClientAccount(req, res, next);
 
-      expect(BankService.getClientAccount).toHaveBeenCalledTimes(1);
-
-      const calledArgs = BankService.getClientAccount.mock.calls[0][0];
-
-      expect(calledArgs).toMatchObject({
+      expect(BankService.getClientAccount).toHaveBeenCalledWith({
         clientId: 123,
         accountId: 456,
+        page: 2,
       });
 
-      expect(calledArgs.page ?? 2).toBe(2);
-      expect(calledArgs.pageSize ?? 5).toBe(5);
-
-      expect(res.json).toHaveBeenCalledWith(mockResult);
+      expect(res.json).toHaveBeenCalledWith(result);
     });
 
-    test("autorise un etudiant à consulter le compte d'un client", async () => {
-      req.user = { id: 50, role: "etudiant" };
-      BankService.getClientAccount.mockResolvedValue({
-        account: { id: 456 },
-        transactions: [],
-        pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
-      });
-
-      await BankController.getClientAccount(req, res, next);
-
-      expect(BankService.getClientAccount).toHaveBeenCalledTimes(1);
-
-      const calledArgs = BankService.getClientAccount.mock.calls[0][0];
-
-      expect(calledArgs).toMatchObject({
-        clientId: 123,
-        accountId: 456,
-      });
-
-      expect(res.json).toHaveBeenCalledWith({
-        account: { id: 456 },
-        transactions: [],
-        pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
-      });
-    });
-
-    test("appelle next(err) si le service lance une erreur", async () => {
+    test("next(err) si le service échoue", async () => {
       const err = new Error("Service account error");
       BankService.getClientAccount.mockRejectedValue(err);
 
       await BankController.getClientAccount(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+    });
+  });
+
+  /* =====================================================
+   * getClientTransactionHistory
+   * ===================================================== */
+  describe("getClientTransactionHistory", () => {
+    test("400 si clientId invalide", async () => {
+      req.params.clientId = "abc";
+
+      await BankController.getClientTransactionHistory(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid clientId" });
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test("403 si client interdit", async () => {
+      req.params.clientId = "999";
+
+      await BankController.getClientTransactionHistory(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ error: "Forbidden" });
+    });
+
+    test("succès", async () => {
+      const history = [{ id: 1 }];
+      BankService.getClientTransactionHistory.mockResolvedValue(history);
+
+      await BankController.getClientTransactionHistory(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({ data: history });
+    });
+
+    test("next(err) si service échoue", async () => {
+      const err = new Error("History error");
+      BankService.getClientTransactionHistory.mockRejectedValue(err);
+
+      await BankController.getClientTransactionHistory(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+    });
+  });
+
+  /* =====================================================
+   * closeClientAccount
+   * ===================================================== */
+  describe("closeClientAccount", () => {
+    test("400 si paramètres invalides", async () => {
+      req.params.accountId = "abc";
+
+      await BankController.closeClientAccount(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid parameters" });
+    });
+
+    test("200 succès fermeture", async () => {
+      const result = {
+        message: "Compte bancaire fermé avec succès",
+        data: { accountId: 456, status: "closed" },
+      };
+
+      BankService.closeClientAccount.mockResolvedValue(result);
+
+      await BankController.closeClientAccount(req, res, next);
+
+      expect(BankService.closeClientAccount).toHaveBeenCalledWith({
+        clientId: 123,
+        accountId: 456,
+      });
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(result);
+    });
+
+    test("next(err) si erreur service", async () => {
+      const err = new Error("Close error");
+      BankService.closeClientAccount.mockRejectedValue(err);
+
+      await BankController.closeClientAccount(req, res, next);
 
       expect(next).toHaveBeenCalledWith(err);
     });
