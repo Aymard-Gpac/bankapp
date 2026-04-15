@@ -7,7 +7,7 @@
 
 import express from "express";
 import { BankController } from "../controllers/bank.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authMiddleware, requireRoles } from "../middlewares/auth.middleware.js";
 
 /**
  * Router Express pour les routes bancaires
@@ -150,6 +150,11 @@ router.get(
 router.get(
   "/:clientId/transactions/history",
   BankController.getClientTransactionHistory
+);
+router.patch(
+  "/:clientId/accounts/:accountId/close",
+  requireRoles("etudiant"),
+  BankController.closeClientAccount
 );
 
 /**

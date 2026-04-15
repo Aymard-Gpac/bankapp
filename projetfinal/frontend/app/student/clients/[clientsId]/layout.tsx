@@ -2,6 +2,7 @@ import MobileNav from "@/components/MobileNav";
 import RightSidebar from "@/components/RightSidebar";
 import Sidebar from "@/components/Sidebar";
 import { getCurrentClientServer } from "@/lib/actions/client.server";
+import { getClientAccountsServer } from "@/lib/actions/bank.server";
 import { getCurrentUserServer } from "@/lib/actions/user.server";
 import Image from "next/image";
 
@@ -18,9 +19,9 @@ export default async function StudentLayout({ children, params }: LayoutProps) {
     throw new Error(`Invalid clientId in params: ${JSON.stringify(params)}`);
   }
 
-  const client = await getCurrentClientServer(clientId);
-  const accounts = await getCurrentClientServer( clientId );
-  const currentUser = await getCurrentUserServer();
+const client = await getCurrentClientServer(clientId);
+const accounts = await getClientAccountsServer(clientId);
+const currentUser = await getCurrentUserServer();
 
 if (!client) {
   return (

@@ -46,7 +46,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <TableCell className="pl-2 pr-10">{c.postalCode}</TableCell>
 
               <TableCell className="pl-2 pr-2 text-right">
-                <NextLink href={`/api/clients/${clientId}/accounts`}>
+                <NextLink href={`/student/clients/${clientId}`}>
                   <Button variant="outline" size="sm">
                     Détails comptes
                   </Button>

@@ -43,6 +43,7 @@ import { TransactionDAO } from "../models/transaction.model.js";
 import { TransferDAO } from "../models/transfer.model.js";
 import { UserDAO } from "../models/user.model.js";
 import { BeneficiaryDAO } from "../models/beneficiary.model.js";
+import { ScheduledTransactionDAO } from "../models/scheduled-transaction.model.js";
 
 /**
  * TransferService
@@ -56,6 +57,97 @@ import { BeneficiaryDAO } from "../models/beneficiary.model.js";
  * - Utiliser des transactions SQL atomiques
  * - Appeler les DAO pour lire/écrire en base
  */
+
+/**
+ * Convertit une date "YYYY-MM-DD" provenant du frontend
+ * en format DATETIME SQLite "YYYY-MM-DD HH:mm:ss".
+ * Si la date est absente ou invalide, on prend maintenant.
+ */
+function normalizeSqlDate(date) {
+  const now = new Date();
+
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  if (typeof date === "string" &amp;&amp; /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    return `${date.trim()} ${hh}:${mm}:${ss}`;
+  }
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hh}:${mm}:${ss}`;
+}
+
+/**
+ * Normalise la fréquence envoyée par le frontend.
+ *
+ * Règle :
+ * - "once" = exécution immédiate
+ * - "weekly" = transaction récurrente hebdomadaire
+ * - "monthly" = transaction récurrente mensuelle
+ * - toute autre valeur => "once"
+ *
+ * @param {string} frequency
+ * @returns {"once"|"weekly"|"monthly"}
+ */
+function normalizeFrequency(frequency) {
+  const frequenceNormalisee = String(frequency ?? "once").trim().toLowerCase();
+
+  if (frequenceNormalisee === "weekly" || frequenceNormalisee === "monthly") {
+    return frequenceNormalisee;
+  }
+
+  return "once";
+}
+
+/**
+ * Ajoute un intervalle à une date SQLite DATETIME.
+ *
+ * Exemple :
+ * - weekly  => +7 jours
+ * - monthly => +1 mois
+ *
+ * @param {string} dateSql - Format "YYYY-MM-DD HH:mm:ss"
+ * @param {"weekly"|"monthly"} frequency
+ * @returns {string}
+ */
+function addIntervalToSqlDate(dateSql, frequency) {
+  const date = new Date(dateSql.replace(" ", "T"));
+
+  if (frequency === "weekly") {
+    date.setDate(date.getDate() + 7);
+  } else if (frequency === "monthly") {
+    date.setMonth(date.getMonth() + 1);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hh}:${mm}:${ss}`;
+}
+
+/**
+ * Crée une transaction programmée en base.
+ *
+ * Cette fonction évite de répéter le même code
+ * dans le virement interne, Interac et paiement de facture.
+ *
+ * @async
+ * @param {Object} donnees
+ * @returns {Promise&lt;Object>}
+ */
+async function creerTransactionProgrammee(donnees) {
+  const insertion = await ScheduledTransactionDAO.create(donnees);
+  return ScheduledTransactionDAO.findById(insertion.lastID);
+}
+
 export const TransferService = {
 
   /**
@@ -73,17 +165,13 @@ export const TransferService = {
    * @param {string} [payload.description] - Description optionnelle
    * @returns {Promise&lt;Object>} Résultat du virement
    *
-   * @example
-   * await TransferService.createInternalTransfer({
-   *   userId: 5,
-   *   fromAccountId: 1,
-   *   toAccountId: 2,
-   *   amount: 100,
-   *   frequency: "once"
-   * });
+   */
+  /**:
+   * - once    => exécution immédiate uniquement
+   * - weekly  => 1ère exécution immédiate + programmation de la suivante
+   * - monthly => 1ère exécution immédiate + programmation de la suivante
    */
   async createInternalTransfer(payload) {
-
     const {
       userId,
       fromAccountId,
@@ -93,6 +181,12 @@ export const TransferService = {
       frequency,
       description,
     } = payload;
+
+    // Date utilisée pour l'exécution immédiate
+    const createdAt = normalizeSqlDate(date);
+
+    // Fréquence normalisée : once / weekly / monthly
+    const normalizedFrequency = normalizeFrequency(frequency);
 
     // Validation du montant
     if (!Number.isFinite(amount) || amount &lt;= 0) {
@@ -109,21 +203,25 @@ export const TransferService = {
       return { ok: false, status: 400, error: "Comptes identiques" };
     }
 
-    // Vérifier que les comptes appartiennent bien au client
+    // Vérifier que les deux comptes appartiennent bien au client connecté
     const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
     const to = await AccountDAO.findByIdAndClientId(toAccountId, userId);
 
-    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
-    if (!to) return { ok: false, status: 404, error: "Compte destination introuvable" };
+    if (!from) {
+      return { ok: false, status: 404, error: "Compte source introuvable" };
+    }
 
-    // Vérifier le solde disponible
+    if (!to) {
+      return { ok: false, status: 404, error: "Compte destination introuvable" };
+    }
+
+    // Vérifier le solde disponible pour la 1ère exécution immédiate
     if (Number(from.balance) &lt; amount) {
       return { ok: false, status: 400, error: "Solde insuffisant" };
     }
 
     try {
-
-      // Début transaction SQL atomique
+      // Transaction SQL atomique
       await db.exec("BEGIN");
 
       const newFromBalance = Number(from.balance) - amount;
@@ -132,33 +230,59 @@ export const TransferService = {
       await AccountDAO.updateBalance(from.id, newFromBalance);
       await AccountDAO.updateBalance(to.id, newToBalance);
 
-      // Enregistrement du transfert
+      // Trace technique du transfert
       const transfer = await TransferDAO.create({
         fromAccountId: from.id,
         toAccountId: to.id,
         amount,
+        createdAt,
       });
 
-      // Métadonnées facultatives
+      // Métadonnées affichées dans l'historique
       const commonMeta = [];
-      if (frequency) commonMeta.push(`freq=${frequency}`);
+      if (normalizedFrequency) commonMeta.push(`freq=${normalizedFrequency}`);
       const metaStr = commonMeta.length ? ` (${commonMeta.join(", ")})` : "";
 
-      // Transaction débit
+      // Ligne débit côté compte source
       const debit = await TransactionDAO.create({
         accountId: from.id,
         type: "DEBIT",
         amount,
         description: `Virement interne sortant${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,
       });
 
-      // Transaction crédit
+      // Ligne crédit côté compte destination
       const credit = await TransactionDAO.create({
         accountId: to.id,
         type: "CREDIT",
         amount,
         description: `Virement interne entrant${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,
       });
+
+      let scheduledTransaction = null;
+
+      /**
+       * Si la fréquence est weekly ou monthly :
+       * - la 1ère occurrence est déjà exécutée maintenant
+       * - on programme donc la PROCHAINE occurrence
+       */
+      if (normalizedFrequency !== "once") {
+        const nextRunDate = addIntervalToSqlDate(createdAt, normalizedFrequency);
+
+        scheduledTransaction = await creerTransactionProgrammee({
+          userId,
+          kind: "internal",
+          fromAccountId: from.id,
+          toAccountId: to.id,
+          amount,
+          frequency: normalizedFrequency,
+          nextRunDate,
+          description: description ?? null,
+          status: "active",
+        });
+      }
 
       await db.exec("COMMIT");
 
@@ -166,21 +290,29 @@ export const TransferService = {
         ok: true,
         status: 201,
         data: {
+          mode: normalizedFrequency === "once" ? "immediate" : "immediate_and_scheduled",
+          message:
+            normalizedFrequency === "once"
+              ? "Virement interne effectué avec succès."
+              : "Première occurrence effectuée immédiatement et récurrence programmée avec succès.",
           transfer,
           debit,
           credit,
+          scheduledTransaction,
           balances: {
             from: newFromBalance,
             to: newToBalance,
           },
         },
       };
-
     } catch (e) {
-
       await db.exec("ROLLBACK");
 
-      return { ok: false, status: 500, error: "Erreur serveur pendant le virement" };
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant le virement",
+      };
     }
   },
 
@@ -197,67 +329,233 @@ export const TransferService = {
    * @param {string} payload.description - Message optionnel
    * @param {string} payload.frequency - Fréquence
    */
+  /**
+   * 
+   * - once    => exécution immédiate uniquement
+   * - weekly  => 1ère exécution immédiate + programmation de la suivante
+   * - monthly => 1ère exécution immédiate + programmation de la suivante
+   */
   async createInteracTransfer(payload) {
+    const {
+      userId,
+      fromAccountId,
+      recipientEmail,
+      recipientFirstName,
+      recipientLastName,
+      amount,
+      date,
+      description,
+      frequency,
+      isExternalRecipient,
+    } = payload;
 
-    const { userId, fromAccountId, toClientId, amount, description, frequency } = payload;
+    const createdAt = normalizeSqlDate(date);
+    const normalizedFrequency = normalizeFrequency(frequency);
 
-    if (!userId) return { ok: false, status: 401, error: "Non authentifié" };
+    const cleanEmail = String(recipientEmail ?? "").trim().toLowerCase();
+    const cleanFirstName = String(recipientFirstName ?? "").trim();
+    const cleanLastName = String(recipientLastName ?? "").trim();
+
+    if (!userId) {
+      return { ok: false, status: 401, error: "Non authentifié" };
+    }
 
     if (!Number.isFinite(amount) || amount &lt;= 0) {
       return { ok: false, status: 400, error: "Montant invalide" };
     }
 
-    if (!fromAccountId || !toClientId) {
-      return { ok: false, status: 400, error: "fromAccountId / toClientId manquants" };
+    if (!fromAccountId || !cleanEmail) {
+      return {
+        ok: false,
+        status: 400,
+        error: "fromAccountId / recipientEmail manquants",
+      };
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Adresse email invalide",
+      };
+    }
+
+    // Si le destinataire est externe, prénom et nom sont obligatoires
+    if (isExternalRecipient) {
+      if (!cleanFirstName) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Le prénom du destinataire externe est obligatoire",
+        };
+      }
+
+      if (!cleanLastName) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Le nom du destinataire externe est obligatoire",
+        };
+      }
     }
 
     const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
-    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
-
-    const to = await AccountDAO.findCheckingByClientId(toClientId);
-    if (!to) return { ok: false, status: 404, error: "Compte courant du destinataire introuvable" };
-
-    if (from.id === to.id) {
-      return { ok: false, status: 400, error: "Impossible de transférer vers le même compte" };
+    if (!from) {
+      return { ok: false, status: 404, error: "Compte source introuvable" };
     }
 
+    // Vérifier le solde disponible pour la 1ère exécution immédiate
     if (Number(from.balance) &lt; amount) {
       return { ok: false, status: 400, error: "Solde insuffisant" };
     }
 
     try {
-
       await db.exec("BEGIN");
 
-      const receivedUser = await UserDAO.findById(toClientId);
+      let transfer;
+      let credit = null;
+      let recipient = null;
+      let scheduledTransaction = null;
 
       const newFromBalance = Number(from.balance) - amount;
-      const newToBalance = Number(to.balance) + amount;
-
       await AccountDAO.updateBalance(from.id, newFromBalance);
-      await AccountDAO.updateBalance(to.id, newToBalance);
 
-      const transfer = await TransferDAO.create({
-        fromAccountId: from.id,
-        toAccountId: to.id,
-        amount,
-      });
+      /**
+       * Cas 1 : destinataire externe
+       * On débite uniquement le compte source.
+       * On garde une trace technique dans transfers.
+       */
+      if (isExternalRecipient) {
+        transfer = await TransferDAO.create({
+          fromAccountId: from.id,
+          toAccountId: from.id,
+          amount,
+          createdAt,
+        });
 
+        recipient = {
+          first_name: cleanFirstName,
+          last_name: cleanLastName,
+          email: cleanEmail,
+          external: true,
+        };
+      } else {
+        /**
+         * Cas 2 : destinataire client existant
+         * On crédite son compte chèque.
+         */
+        const recipientUser = await UserDAO.findByEmail(cleanEmail);
+
+        if (!recipientUser) {
+          await db.exec("ROLLBACK");
+          return {
+            ok: false,
+            status: 404,
+            error: "Aucun client trouvé avec cet email",
+          };
+        }
+
+        if (recipientUser.role !== "client") {
+          await db.exec("ROLLBACK");
+          return {
+            ok: false,
+            status: 400,
+            error: "Le destinataire doit être un client",
+          };
+        }
+
+        if (recipientUser.id === userId) {
+          await db.exec("ROLLBACK");
+          return {
+            ok: false,
+            status: 400,
+            error: "Impossible d’envoyer un Interac à vous-même",
+          };
+        }
+
+        const to = await AccountDAO.findCheckingByClientId(recipientUser.id);
+        if (!to) {
+          await db.exec("ROLLBACK");
+          return {
+            ok: false,
+            status: 404,
+            error: "Compte chèque du destinataire introuvable",
+          };
+        }
+
+        const newToBalance = Number(to.balance) + amount;
+        await AccountDAO.updateBalance(to.id, newToBalance);
+
+        transfer = await TransferDAO.create({
+          fromAccountId: from.id,
+          toAccountId: to.id,
+          amount,
+          createdAt,
+        });
+
+        const senderUser = await UserDAO.findById(userId);
+        const desc = description ? `: ${String(description).trim()}` : "";
+        const metaStr = normalizedFrequency ? ` (freq=${normalizedFrequency})` : "";
+
+        credit = await TransactionDAO.create({
+          accountId: to.id,
+          type: "CREDIT",
+          amount,
+          description: `Interac reçu de ${senderUser.email}${desc}${metaStr}`,
+          createdAt,
+        });
+
+        recipient = {
+          id: recipientUser.id,
+          first_name: recipientUser.first_name,
+          last_name: recipientUser.last_name,
+          email: recipientUser.email,
+          external: false,
+        };
+      }
+
+      // Ligne débit côté expéditeur
       const desc = description ? `: ${String(description).trim()}` : "";
+      const metaStr = normalizedFrequency ? ` (freq=${normalizedFrequency})` : "";
+
+      const recipientDisplayName = isExternalRecipient
+        ? `${cleanFirstName} ${cleanLastName}`.trim()
+        : `${recipient?.first_name ?? ""} ${recipient?.last_name ?? ""}`.trim();
 
       const debit = await TransactionDAO.create({
         accountId: from.id,
         type: "DEBIT",
         amount,
-        description: `Interac envoyé → ${receivedUser.first_name}${desc}`,
+        description: recipientDisplayName
+          ? `Interac envoyé à ${recipientDisplayName}${desc}${metaStr}`
+          : `Interac envoyé${desc}${metaStr}`,
+        createdAt,
       });
 
-      const credit = await TransactionDAO.create({
-        accountId: to.id,
-        type: "CREDIT",
-        amount,
-        description: `Interac reçu ← ${userId.first_name} ${desc}`,
-      });
+      /**
+       * Si la fréquence est weekly ou monthly :
+       * - la 1ère occurrence vient d’être exécutée
+       * - on programme la prochaine occurrence
+       */
+      if (normalizedFrequency !== "once") {
+        const nextRunDate = addIntervalToSqlDate(createdAt, normalizedFrequency);
+
+        scheduledTransaction = await creerTransactionProgrammee({
+          userId,
+          kind: "interac",
+          fromAccountId: from.id,
+          recipientEmail: cleanEmail,
+          recipientFirstName: cleanFirstName || null,
+          recipientLastName: cleanLastName || null,
+          isExternalRecipient: Boolean(isExternalRecipient),
+          amount,
+          frequency: normalizedFrequency,
+          nextRunDate,
+          description: description ?? null,
+          status: "active",
+        });
+      }
 
       await db.exec("COMMIT");
 
@@ -265,25 +563,28 @@ export const TransferService = {
         ok: true,
         status: 201,
         data: {
+          mode: normalizedFrequency === "once" ? "immediate" : "immediate_and_scheduled",
+          message:
+            normalizedFrequency === "once"
+              ? "Virement Interac effectué avec succès."
+              : "Première occurrence Interac effectuée immédiatement et récurrence programmée avec succès.",
           transfer,
           debit,
           credit,
-          toAccountId: to.id,
-          balances: { from: newFromBalance, to: newToBalance },
+          recipient,
+          scheduledTransaction,
+          balances: {
+            from: newFromBalance,
+          },
         },
       };
-
     } catch (e) {
-
-      try {
-        await db.exec("ROLLBACK");
-      } catch (_) {}
+      await db.exec("ROLLBACK");
 
       return {
         ok: false,
         status: 500,
         error: "Erreur serveur pendant le virement Interac",
-        details: String(e?.message ?? e),
       };
     }
   },
@@ -302,8 +603,12 @@ export const TransferService = {
    * @param {string} payload.frequency
    * @param {string} [payload.description]
    */
+  /**
+   * - once    => exécution immédiate uniquement
+   * - weekly  => 1ère exécution immédiate + programmation de la suivante
+   * - monthly => 1ère exécution immédiate + programmation de la suivante
+   */
   async payBill(payload) {
-
     const {
       userId,
       fromAccountId,
@@ -314,6 +619,9 @@ export const TransferService = {
       description,
     } = payload;
 
+    const createdAt = normalizeSqlDate(date);
+    const normalizedFrequency = normalizeFrequency(frequency);
+
     if (!Number.isFinite(amount) || amount &lt;= 0) {
       return { ok: false, status: 400, error: "Montant invalide" };
     }
@@ -323,28 +631,59 @@ export const TransferService = {
     }
 
     const from = await AccountDAO.findByIdAndClientId(fromAccountId, userId);
-    if (!from) return { ok: false, status: 404, error: "Compte source introuvable" };
+    if (!from) {
+      return { ok: false, status: 404, error: "Compte source introuvable" };
+    }
 
     const beneficiary = await BeneficiaryDAO.findByIdAndUserId(beneficiaryId, userId);
-    if (!beneficiary) return { ok: false, status: 404, error: "Bénéficiaire introuvable" };
+    if (!beneficiary) {
+      return { ok: false, status: 404, error: "Bénéficiaire introuvable" };
+    }
 
+    // Vérifier le solde pour la 1ère exécution immédiate
     if (Number(from.balance) &lt; amount) {
       return { ok: false, status: 400, error: "Solde insuffisant" };
     }
 
     try {
-
       await db.exec("BEGIN");
 
       const newFromBalance = Number(from.balance) - amount;
       await AccountDAO.updateBalance(from.id, newFromBalance);
 
+      const metaStr = normalizedFrequency ? ` (freq=${normalizedFrequency})` : "";
+
+      // Ligne débit immédiate du paiement
       const debit = await TransactionDAO.create({
         accountId: from.id,
         type: "DEBIT",
         amount,
-        description: `Paiement facture à ${beneficiary.name}${description ? `: ${description}` : ""}`,
+        description: `Paiement facture à ${beneficiary.name}${description ? `: ${description}` : ""}${metaStr}`,
+        createdAt,
       });
+
+      let scheduledTransaction = null;
+
+      /**
+       * Si la fréquence est weekly ou monthly :
+       * - le paiement actuel est déjà débité maintenant
+       * - on programme le prochain paiement
+       */
+      if (normalizedFrequency !== "once") {
+        const nextRunDate = addIntervalToSqlDate(createdAt, normalizedFrequency);
+
+        scheduledTransaction = await creerTransactionProgrammee({
+          userId,
+          kind: "bill",
+          fromAccountId: from.id,
+          beneficiaryId: beneficiary.id,
+          amount,
+          frequency: normalizedFrequency,
+          nextRunDate,
+          description: description ?? null,
+          status: "active",
+        });
+      }
 
       await db.exec("COMMIT");
 
@@ -352,17 +691,464 @@ export const TransferService = {
         ok: true,
         status: 201,
         data: {
+          mode: normalizedFrequency === "once" ? "immediate" : "immediate_and_scheduled",
+          message:
+            normalizedFrequency === "once"
+              ? "Paiement effectué avec succès."
+              : "Premier paiement effectué immédiatement et récurrence programmée avec succès.",
           debit,
           beneficiary,
+          scheduledTransaction,
           balances: { from: newFromBalance },
         },
       };
-
     } catch (e) {
-
       await db.exec("ROLLBACK");
 
-      return { ok: false, status: 500, error: "Erreur serveur pendant le paiement" };
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant le paiement",
+      };
+    }
+  },
+
+  /**
+   * Traite les transactions programmées arrivées à échéance.
+   *
+   * Cette méthode pourra être appelée plus tard :
+   * - manuellement via une route
+   * - automatiquement via un cron / scheduler
+   *
+   *
+   * - on exécute seulement les transactions actives
+   * - si l’exécution réussit, on avance next_run_date
+   * - si l’exécution échoue, on laisse la transaction active
+   *
+   * @async
+   * @returns {Promise&lt;Object>}
+   */
+  async processDueScheduledTransactions() {
+    const maintenant = normalizeSqlDate();
+
+    const transactionsAEcheance =
+      await ScheduledTransactionDAO.findDueActive(maintenant);
+
+    const resultats = [];
+
+    for (const transaction of transactionsAEcheance) {
+      try {
+        
+        //  VIREMENT INTERNE PROGRAMMÉ
+        
+        if (transaction.kind === "internal") {
+          const from = await AccountDAO.findByIdAndClientId(
+            transaction.from_account_id,
+            transaction.user_id
+          );
+
+          const to = await AccountDAO.findByIdAndClientId(
+            transaction.to_account_id,
+            transaction.user_id
+          );
+
+          if (!from || !to) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Compte source ou destination introuvable",
+            });
+            continue;
+          }
+
+          if (Number(from.balance) &lt; Number(transaction.amount)) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Solde insuffisant",
+            });
+            continue;
+          }
+
+          await db.exec("BEGIN");
+
+          const nouveauSoldeSource =
+            Number(from.balance) - Number(transaction.amount);
+          const nouveauSoldeDestination =
+            Number(to.balance) + Number(transaction.amount);
+
+          await AccountDAO.updateBalance(from.id, nouveauSoldeSource);
+          await AccountDAO.updateBalance(to.id, nouveauSoldeDestination);
+
+          await TransferDAO.create({
+            fromAccountId: from.id,
+            toAccountId: to.id,
+            amount: Number(transaction.amount),
+            createdAt: transaction.next_run_date,
+          });
+
+          await TransactionDAO.create({
+            accountId: from.id,
+            type: "DEBIT",
+            amount: Number(transaction.amount),
+            description: `Virement interne récurrent${
+              transaction.description ? `: ${transaction.description}` : ""
+            } (freq=${transaction.frequency})`,
+            createdAt: transaction.next_run_date,
+          });
+
+          await TransactionDAO.create({
+            accountId: to.id,
+            type: "CREDIT",
+            amount: Number(transaction.amount),
+            description: `Virement interne récurrent entrant${
+              transaction.description ? `: ${transaction.description}` : ""
+            } (freq=${transaction.frequency})`,
+            createdAt: transaction.next_run_date,
+          });
+
+          const prochaineDate = addIntervalToSqlDate(
+            transaction.next_run_date,
+            transaction.frequency
+          );
+
+          await ScheduledTransactionDAO.markRun(transaction.id, prochaineDate);
+
+          await db.exec("COMMIT");
+
+          resultats.push({ id: transaction.id, ok: true });
+          continue;
+        }
+
+        
+        //  INTERAC PROGRAMMÉ
+        
+        if (transaction.kind === "interac") {
+          const from = await AccountDAO.findByIdAndClientId(
+            transaction.from_account_id,
+            transaction.user_id
+          );
+
+          if (!from) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Compte source introuvable",
+            });
+            continue;
+          }
+
+          if (Number(from.balance) &lt; Number(transaction.amount)) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Solde insuffisant",
+            });
+            continue;
+          }
+
+          await db.exec("BEGIN");
+
+          const nouveauSoldeSource =
+            Number(from.balance) - Number(transaction.amount);
+
+          await AccountDAO.updateBalance(from.id, nouveauSoldeSource);
+
+          if (transaction.is_external_recipient) {
+            await TransferDAO.create({
+              fromAccountId: from.id,
+              toAccountId: from.id,
+              amount: Number(transaction.amount),
+              createdAt: transaction.next_run_date,
+            });
+
+            const nomDestinataire = `${
+              transaction.recipient_first_name ?? ""
+            } ${transaction.recipient_last_name ?? ""}`.trim();
+
+            await TransactionDAO.create({
+              accountId: from.id,
+              type: "DEBIT",
+              amount: Number(transaction.amount),
+              description: nomDestinataire
+                ? `Interac récurrent envoyé à ${nomDestinataire}${
+                    transaction.description ? `: ${transaction.description}` : ""
+                  } (freq=${transaction.frequency})`
+                : `Interac récurrent envoyé${
+                    transaction.description ? `: ${transaction.description}` : ""
+                  } (freq=${transaction.frequency})`,
+              createdAt: transaction.next_run_date,
+            });
+          } else {
+            const destinataire = await UserDAO.findByEmail(
+              transaction.recipient_email
+            );
+
+            if (!destinataire) {
+              await db.exec("ROLLBACK");
+              resultats.push({
+                id: transaction.id,
+                ok: false,
+                error: "Destinataire introuvable",
+              });
+              continue;
+            }
+
+            const compteDestination = await AccountDAO.findCheckingByClientId(
+              destinataire.id
+            );
+
+            if (!compteDestination) {
+              await db.exec("ROLLBACK");
+              resultats.push({
+                id: transaction.id,
+                ok: false,
+                error: "Compte chèque du destinataire introuvable",
+              });
+              continue;
+            }
+
+            const nouveauSoldeDestination =
+              Number(compteDestination.balance) + Number(transaction.amount);
+
+            await AccountDAO.updateBalance(
+              compteDestination.id,
+              nouveauSoldeDestination
+            );
+
+            await TransferDAO.create({
+              fromAccountId: from.id,
+              toAccountId: compteDestination.id,
+              amount: Number(transaction.amount),
+              createdAt: transaction.next_run_date,
+            });
+
+            const expediteur = await UserDAO.findById(transaction.user_id);
+
+            await TransactionDAO.create({
+              accountId: from.id,
+              type: "DEBIT",
+              amount: Number(transaction.amount),
+              description: `Interac récurrent envoyé à ${
+                destinataire.first_name
+              } ${destinataire.last_name}${
+                transaction.description ? `: ${transaction.description}` : ""
+              } (freq=${transaction.frequency})`,
+              createdAt: transaction.next_run_date,
+            });
+
+            await TransactionDAO.create({
+              accountId: compteDestination.id,
+              type: "CREDIT",
+              amount: Number(transaction.amount),
+              description: `Interac récurrent reçu de ${expediteur.email}${
+                transaction.description ? `: ${transaction.description}` : ""
+              } (freq=${transaction.frequency})`,
+              createdAt: transaction.next_run_date,
+            });
+          }
+
+          const prochaineDate = addIntervalToSqlDate(
+            transaction.next_run_date,
+            transaction.frequency
+          );
+
+          await ScheduledTransactionDAO.markRun(transaction.id, prochaineDate);
+
+          await db.exec("COMMIT");
+
+          resultats.push({ id: transaction.id, ok: true });
+          continue;
+        }
+
+        
+        //  PAIEMENT DE FACTURE PROGRAMMÉ
+        
+        if (transaction.kind === "bill") {
+          const from = await AccountDAO.findByIdAndClientId(
+            transaction.from_account_id,
+            transaction.user_id
+          );
+
+          const beneficiary = await BeneficiaryDAO.findByIdAndUserId(
+            transaction.beneficiary_id,
+            transaction.user_id
+          );
+
+          if (!from || !beneficiary) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Compte source ou bénéficiaire introuvable",
+            });
+            continue;
+          }
+
+          if (Number(from.balance) &lt; Number(transaction.amount)) {
+            resultats.push({
+              id: transaction.id,
+              ok: false,
+              error: "Solde insuffisant",
+            });
+            continue;
+          }
+
+          await db.exec("BEGIN");
+
+          const nouveauSoldeSource =
+            Number(from.balance) - Number(transaction.amount);
+
+          await AccountDAO.updateBalance(from.id, nouveauSoldeSource);
+
+          await TransactionDAO.create({
+            accountId: from.id,
+            type: "DEBIT",
+            amount: Number(transaction.amount),
+            description: `Paiement récurrent à ${beneficiary.name}${
+              transaction.description ? `: ${transaction.description}` : ""
+            } (freq=${transaction.frequency})`,
+            createdAt: transaction.next_run_date,
+          });
+
+          const prochaineDate = addIntervalToSqlDate(
+            transaction.next_run_date,
+            transaction.frequency
+          );
+
+          await ScheduledTransactionDAO.markRun(transaction.id, prochaineDate);
+
+          await db.exec("COMMIT");
+
+          resultats.push({ id: transaction.id, ok: true });
+        }
+      } catch (e) {
+        try {
+          await db.exec("ROLLBACK");
+        } catch {
+          // Rien à faire ici si aucun BEGIN actif
+        }
+
+        resultats.push({
+          id: transaction.id,
+          ok: false,
+          error: "Erreur serveur pendant le traitement automatique",
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      data: resultats,
+    };
+  },
+    
+
+  /**
+   * Récupère toutes les transactions programmées du client connecté
+   *
+   * @async
+   * @returns {Promise&lt;Object>}
+   */
+  async getScheduledTransactions(userId) {
+    if (!userId) {
+      return { ok: false, status: 401, error: "Non authentifié" };
+    }
+
+    try {
+      const transactionsProgrammees =
+        await ScheduledTransactionDAO.findByUserId(userId);
+
+      return {
+        ok: true,
+        status: 200,
+        data: transactionsProgrammees,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant la récupération des transactions programmées",
+      };
+    }
+  },
+    
+
+  /**
+   * Annule une transaction programmée appartenant au client connecté
+   *
+   * Règle :
+   * - seule une transaction du client peut être annulée
+   * - on ne la supprime pas de la base
+   * - on change simplement son statut à "cancelled"
+   *
+   * @async
+   * @param {number} userId - ID du client connecté
+   * @param {number} scheduledTransactionId - ID de la transaction programmée
+   * @returns {Promise&lt;Object>}
+   */
+  async cancelScheduledTransaction(userId, scheduledTransactionId) {
+    if (!userId) {
+      return { ok: false, status: 401, error: "Non authentifié" };
+    }
+
+    if (!Number.isInteger(Number(scheduledTransactionId))) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Identifiant de transaction programmée invalide",
+      };
+    }
+
+    try {
+      const transactionProgrammee = await ScheduledTransactionDAO.findById(
+        Number(scheduledTransactionId)
+      );
+
+      if (!transactionProgrammee) {
+        return {
+          ok: false,
+          status: 404,
+          error: "Transaction programmée introuvable",
+        };
+      }
+
+      if (Number(transactionProgrammee.user_id) !== Number(userId)) {
+        return {
+          ok: false,
+          status: 403,
+          error: "Accès refusé à cette transaction programmée",
+        };
+      }
+
+      if (transactionProgrammee.status === "cancelled") {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            message: "La transaction programmée est déjà annulée",
+          },
+        };
+      }
+
+      await ScheduledTransactionDAO.cancel(
+        Number(scheduledTransactionId),
+        Number(userId)
+      );
+
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          message: "Transaction programmée annulée avec succès",
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 500,
+        error: "Erreur serveur pendant l’annulation de la transaction programmée",
+      };
     }
   }
 };</code></pre>
@@ -375,13 +1161,13 @@ export const TransferService = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 17 2026 13:20:58 GMT-0400 (heure avancée de l’Est)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 14 2026 14:06:55 GMT-0400 (heure avancée de l’Est)
 </footer>
 
 <script> prettyPrint(); </script>
