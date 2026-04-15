@@ -14,6 +14,11 @@ export const sidebarLinks = [
 
   },
   {
+    imgURL: "/icons/deposit.svg",
+    route: "/check-deposit",
+    label: "Dépôt de chèque",
+  },
+  {
     imgURL: "/icons/transaction.svg",
     route: "/transaction-history",
     label: "Historique des transactions",

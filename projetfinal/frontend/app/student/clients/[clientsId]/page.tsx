@@ -39,15 +39,15 @@ const ClientAccountsPage = async ({ params, searchParams }: PageProps) => {
     );
   }
 
-  // ✅ accountId = string
   const accountId =
     (typeof searchParams.id === "string" && searchParams.id) ||
     String(accountsData[0].id);
+
   const accountIdNum = Number(accountId);
 
   const accountDetails = await getClientAccountServer({
     clientId,
-    accountId: Number(accountId),
+    accountId: accountIdNum,
     page: currentPage,
     pageSize: 10,
   });
@@ -79,6 +79,7 @@ const ClientAccountsPage = async ({ params, searchParams }: PageProps) => {
           transactions={accountDetails?.transactions || []}
           accountId={accountIdNum}
           page={currentPage}
+          clientId={params.clientsId}
         />
       </div>
     </section>

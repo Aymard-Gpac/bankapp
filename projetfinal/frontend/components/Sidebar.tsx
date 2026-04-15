@@ -153,6 +153,9 @@ const Sidebar = ({ user, currentUser }: SiderbarProps) => {
      if (label === "Produits") {
        return currentPath === normalize("/products");
      }
+     if (label === "Dépôt de chèque") {
+       return currentPath === normalize("/check-deposit");
+     }
    
      return currentPath === targetPath;
   }
