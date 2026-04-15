@@ -5,6 +5,18 @@ import db, { dbPath } from "./database.js";
 // ✅ Nouveau fichier ?
 const IS_NEW = !existsSync(dbPath);
 
+// Fonction utilitaire pour ajouter une colonne si elle n'existe pas (utile pour les évolutions futures)
+async function ensureColumnExists(tableName, columnName, columnDefinition) {
+  const columns = await db.all(`PRAGMA table_info(${tableName})`);
+  const exists = columns.some((column) => column.name === columnName);
+
+  if (!exists) {
+    await db.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`
+    );
+  }
+}
+
 
 export async function initDB() {
   // Toujours activer les FK
@@ -35,7 +47,9 @@ export async function initDB() {
       type TEXT NOT NULL,
       balance REAL DEFAULT 0,
       currency TEXT DEFAULT 'CAD',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,     
+      status TEXT DEFAULT 'active',
+      closed_at DATETIME,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
@@ -109,6 +123,13 @@ export async function initDB() {
       FOREIGN KEY (account_id) REFERENCES accounts(id)
     );
   `);
+
+/**
+ * Sécurise les anciennes bases déjà créées avant cette fonctionnalité :
+ * on ajoute les colonnes manquantes si elles n'existent pas encore.
+ */
+  await ensureColumnExists("accounts", "status", "TEXT DEFAULT 'active'");
+  await ensureColumnExists("accounts", "closed_at", "DATETIME");
 
   if (IS_NEW) {
     console.log("✅ DB initialized:", dbPath);

@@ -98,12 +98,22 @@ export const AccountDAO = {
    */
   findByClientId(clientId) {
     return db.all(
-      `SELECT id, user_id, account_number, type, balance, currency, created_at
-       FROM accounts
-       WHERE user_id = ?
-       ORDER BY id ASC`,
-      clientId,
-    );
+     `SELECT
+        id,
+        user_id,
+        account_number,
+        type,
+        balance,
+        currency,
+        created_at,
+        COALESCE(status, 'active') AS status,
+        closed_at
+      FROM accounts
+      WHERE user_id = ?
+        AND COALESCE(status, 'active') = 'active'
+      ORDER BY id ASC`,
+     clientId,
+   );
   },
 
   /**
@@ -122,11 +132,12 @@ export const AccountDAO = {
    */
   summaryByClientId(clientId) {
     return db.get(
-      `SELECT 
-         COUNT(*) AS totalBanks,
-         COALESCE(SUM(balance), 0) AS totalCurrentBalance
-       FROM accounts
-       WHERE user_id = ?`,
+     `SELECT 
+        COUNT(*) AS totalBanks,
+        COALESCE(SUM(balance), 0) AS totalCurrentBalance
+      FROM accounts
+      WHERE user_id = ?
+        AND COALESCE(status, 'active') = 'active'`,
       clientId,
     );
   },
@@ -157,13 +168,57 @@ export const AccountDAO = {
    */
   findByIdAndClientId(accountId, clientId) {
     return db.get(
-      `SELECT id, user_id, account_number, type, balance, currency, created_at
-       FROM accounts
-       WHERE id = ? AND user_id = ?`,
+     `SELECT
+        id,
+        user_id,
+        account_number,
+        type,
+        balance,
+        currency,
+        created_at,
+        COALESCE(status, 'active') AS status,
+        closed_at
+      FROM accounts
+      WHERE id = ?
+        AND user_id = ?
+        AND COALESCE(status, 'active') = 'active'`,
       accountId,
       clientId,
-    );
+    ); 
   },
+  // validation d'un compte(fermé ou actif) 
+  findAnyByIdAndClientId(accountId, clientId) {
+  return db.get(
+    `SELECT
+       id,
+       user_id,
+       account_number,
+       type,
+       balance,
+       currency,
+       created_at,
+       COALESCE(status, 'active') AS status,
+       closed_at
+     FROM accounts
+     WHERE id = ?
+       AND user_id = ?`,
+    accountId,
+    clientId,
+  );
+},
+// Ferme un compte bancaire (change son statut à 'closed')
+closeAccount(accountId, clientId) {
+  return db.run(
+    `UPDATE accounts
+     SET status = 'closed',
+         closed_at = CURRENT_TIMESTAMP
+     WHERE id = ?
+       AND user_id = ?
+       AND COALESCE(status, 'active') = 'active'`,
+    accountId,
+    clientId
+  );
+},
 
   updateBalance(accountId, newBalance) {
     return db.run(
@@ -195,13 +250,13 @@ export const AccountDAO = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#payBill">payBill</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Mar 17 2026 13:20:58 GMT-0400 (heure avancée de l’Est)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 14 2026 14:06:55 GMT-0400 (heure avancée de l’Est)
 </footer>
 
 <script> prettyPrint(); </script>

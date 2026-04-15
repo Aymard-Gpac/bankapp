@@ -7,6 +7,7 @@
 
 import { AccountDAO } from "../models/bank.model.js";
 import { TransactionDAO } from "../models/transaction.model.js";
+import { ScheduledTransactionDAO } from "../models/scheduled-transaction.model.js";
 
 /**
  * Service gérant les opérations bancaires des clients
@@ -177,5 +178,59 @@ export const BankService = {
   // Récupère l'historique complet des transactions d'un client (tous comptes confondus)
   async getClientTransactionHistory(clientId) {
   return TransactionDAO.findHistoryByClientId(clientId);
+},
+
+// Ferme un compte bancaire d'un client après vérifications
+async closeClientAccount({ clientId, accountId }) {
+  const account = await AccountDAO.findAnyByIdAndClientId(accountId, clientId);
+
+  if (!account) {
+    const err = new Error("Account not found for this client");
+    err.status = 404;
+    throw err;
+  }
+
+  if (account.status === "closed") {
+    const err = new Error("This account is already closed");
+    err.status = 409;
+    throw err;
+  }
+
+  const balance = Number(account.balance || 0);
+
+  if (Math.abs(balance) > 0.00001) {
+    const err = new Error(
+      "Impossible de fermer ce compte : le solde doit être à 0"
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  const scheduledLinks =
+    await ScheduledTransactionDAO.countActiveByAccountId(clientId, accountId);
+
+  if (Number(scheduledLinks?.total || 0) > 0) {
+    const err = new Error(
+      "Impossible de fermer ce compte : des transactions programmées actives y sont encore liées"
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  const result = await AccountDAO.closeAccount(accountId, clientId);
+
+  if (!result?.changes) {
+    const err = new Error("Unable to close account");
+    err.status = 500;
+    throw err;
+  }
+
+  return {
+    message: "Compte bancaire fermé avec succès",
+    data: {
+      accountId,
+      status: "closed",
+    },
+  };
 },
 };

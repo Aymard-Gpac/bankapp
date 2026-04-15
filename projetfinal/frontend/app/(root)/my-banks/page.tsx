@@ -1,24 +1,18 @@
 import BankCard from "@/components/BankCard";
 import HeaderBox from "@/components/HeaderBox";
 import { getClientAccountsServer } from "@/lib/actions/bank.server";
-import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getCurrentUserServer } from "@/lib/actions/user.server";
 import { redirect } from "next/navigation";
 import type { Account } from "@/types";
 
-type PageProps = {
-  params: { clientsId: string };
-};
+const MyBanks = async () => {
+  const client = await getCurrentUserServer();
 
-const MyBanks = async ({ params }: PageProps) => {
-  const client = await getCurrentUser();
-
-  // ✅ Sécurité : si non connecté
   if (!client || !client.id) {
     redirect("/sign-in");
   }
 
   const clientId = client.id;
-
   const accounts = await getClientAccountsServer(clientId);
 
   if (!accounts?.data?.length) {
@@ -28,7 +22,10 @@ const MyBanks = async ({ params }: PageProps) => {
           <HeaderBox
             title="Comptes bancaires"
             subtext="Aucun compte bancaire trouvé pour ce client."
-            userName={`${client?.first_name ?? ""} ${client?.last_name ?? ""}`.trim() || "Client"}
+            userName={
+              `${client?.first_name ?? ""} ${client?.last_name ?? ""}`.trim() ||
+              "Client"
+            }
           />
         </div>
       </section>

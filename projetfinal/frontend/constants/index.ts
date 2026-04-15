@@ -29,7 +29,7 @@ export const sidebarLinks = [
     label: "Liste client",
   },
   {
-    imgURL: "/icons/trasaction.svg",
+    imgURL: "/icons/transaction.svg",
     route: "/future-transactions",
     label: "Transactions futures",
   },

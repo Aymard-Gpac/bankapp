@@ -70,12 +70,22 @@ export const AccountDAO = {
    */
   findByClientId(clientId) {
     return db.all(
-      `SELECT id, user_id, account_number, type, balance, currency, created_at
-       FROM accounts
-       WHERE user_id = ?
-       ORDER BY id ASC`,
-      clientId,
-    );
+     `SELECT
+        id,
+        user_id,
+        account_number,
+        type,
+        balance,
+        currency,
+        created_at,
+        COALESCE(status, 'active') AS status,
+        closed_at
+      FROM accounts
+      WHERE user_id = ?
+        AND COALESCE(status, 'active') = 'active'
+      ORDER BY id ASC`,
+     clientId,
+   );
   },
 
   /**
@@ -94,11 +104,12 @@ export const AccountDAO = {
    */
   summaryByClientId(clientId) {
     return db.get(
-      `SELECT 
-         COUNT(*) AS totalBanks,
-         COALESCE(SUM(balance), 0) AS totalCurrentBalance
-       FROM accounts
-       WHERE user_id = ?`,
+     `SELECT 
+        COUNT(*) AS totalBanks,
+        COALESCE(SUM(balance), 0) AS totalCurrentBalance
+      FROM accounts
+      WHERE user_id = ?
+        AND COALESCE(status, 'active') = 'active'`,
       clientId,
     );
   },
@@ -129,13 +140,57 @@ export const AccountDAO = {
    */
   findByIdAndClientId(accountId, clientId) {
     return db.get(
-      `SELECT id, user_id, account_number, type, balance, currency, created_at
-       FROM accounts
-       WHERE id = ? AND user_id = ?`,
+     `SELECT
+        id,
+        user_id,
+        account_number,
+        type,
+        balance,
+        currency,
+        created_at,
+        COALESCE(status, 'active') AS status,
+        closed_at
+      FROM accounts
+      WHERE id = ?
+        AND user_id = ?
+        AND COALESCE(status, 'active') = 'active'`,
       accountId,
       clientId,
-    );
+    ); 
   },
+  // validation d'un compte(fermé ou actif) 
+  findAnyByIdAndClientId(accountId, clientId) {
+  return db.get(
+    `SELECT
+       id,
+       user_id,
+       account_number,
+       type,
+       balance,
+       currency,
+       created_at,
+       COALESCE(status, 'active') AS status,
+       closed_at
+     FROM accounts
+     WHERE id = ?
+       AND user_id = ?`,
+    accountId,
+    clientId,
+  );
+},
+// Ferme un compte bancaire (change son statut à 'closed')
+closeAccount(accountId, clientId) {
+  return db.run(
+    `UPDATE accounts
+     SET status = 'closed',
+         closed_at = CURRENT_TIMESTAMP
+     WHERE id = ?
+       AND user_id = ?
+       AND COALESCE(status, 'active') = 'active'`,
+    accountId,
+    clientId
+  );
+},
 
   updateBalance(accountId, newBalance) {
     return db.run(

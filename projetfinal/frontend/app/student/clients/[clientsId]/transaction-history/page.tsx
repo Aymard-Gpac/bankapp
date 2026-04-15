@@ -1,19 +1,34 @@
 import HeaderBox from "@/components/HeaderBox";
 import HistoryTabs from "@/components/HistoryTabs";
 import { getClientTransactionHistoryServer } from "@/lib/actions/bank.server";
-import { getCurrentUserServer } from "@/lib/actions/user.server";
+import { getCurrentClientServer } from "@/lib/actions/client.server";
 import { redirect } from "next/navigation";
 
-const HistoryPage = async () => {
-  const client = await getCurrentUserServer();
+type StudentTransactionHistoryPageProps = {
+  params: {
+    clientsId: string;
+  };
+};
 
-  // ✅ Sécurité : éviter crash si non connecté
-  if (!client || !client.id) {
-    redirect("/sign-in");
+const StudentTransactionHistoryPage = async ({
+  params,
+}: StudentTransactionHistoryPageProps) => {
+  const clientId = Number(params.clientsId);
+
+  // Sécurité : si l'id dans l'URL est invalide, on retourne à la liste étudiant
+  if (Number.isNaN(clientId)) {
+    redirect("/student");
   }
 
-  const clientId = client.id;
+  // On récupère le client supervisé
+  const client = await getCurrentClientServer(clientId);
 
+  // Si le client n'existe pas ou n'est pas accessible, retour à la liste
+  if (!client) {
+    redirect("/student");
+  }
+
+  // On réutilise exactement la même source de données que la page client
   const history = await getClientTransactionHistoryServer(clientId);
 
   return (
@@ -21,14 +36,13 @@ const HistoryPage = async () => {
       <div className="mx-auto w-full max-w-7xl px-6 py-8">
         <HeaderBox
           title="Historique des transactions"
-          subtext="Analysez les opérations réalisées sur vos comptes chèque, épargne et crédit."
+          subtext="Consultez les opérations réalisées sur les comptes chèque, épargne et crédit du client supervisé."
           userName={
             `${client?.first_name ?? ""} ${client?.last_name ?? ""}`.trim() ||
             "Client"
           }
         />
 
-        {/* Contenu principal en pleine largeur */}
         <div className="mt-8">
           <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-6">
             <HistoryTabs transactions={history?.data ?? []} />
@@ -39,4 +53,4 @@ const HistoryPage = async () => {
   );
 };
 
-export default HistoryPage;
+export default StudentTransactionHistoryPage;
