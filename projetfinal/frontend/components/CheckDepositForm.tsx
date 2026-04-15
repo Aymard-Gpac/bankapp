@@ -179,7 +179,7 @@ export default function CheckDepositForm({
               />
             </div>
             <p className="mt-2 text-12 text-gray-500">
-              Ici le QR est simulé pour respecter le scrum sans casser l’architecture.
+              
             </p>
           </div>
 
