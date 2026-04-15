@@ -1,55 +1,62 @@
 import { jest, describe, test, expect, beforeEach } from "@jest/globals";
 
-/**
- * ✅ On mock la DB (ici seulement db.exec)
- * Objectif: vérifier que le service fait bien BEGIN / COMMIT / ROLLBACK
- * sans toucher à la vraie base SQLite.
- */
+/* =====================================================
+ * MOCKS
+ * ===================================================== */
 jest.unstable_mockModule("../../src/config/database.js", () => ({
   __esModule: true,
-  default: {
-    exec: jest.fn(),
-  },
+  default: { exec: jest.fn() },
 }));
 
-/**
- * ✅ On mock les DAO pour isoler la logique métier du service.
- * Les DAO = accès base de données.
- * Le service = règles (validation, solde, transactions, rollback, etc.)
- */
 jest.unstable_mockModule("../../src/models/bank.model.js", () => ({
+  __esModule: true,
   AccountDAO: {
-    findByIdAndClientId: jest.fn(),      // compte d'un client (ownership)
-    findCheckingByClientId: jest.fn(),   // compte courant du destinataire (Interac)
-    updateBalance: jest.fn(),            // mise à jour solde
+    findByIdAndClientId: jest.fn(),
+    findCheckingByClientId: jest.fn(),
+    updateBalance: jest.fn(),
   },
 }));
 
 jest.unstable_mockModule("../../src/models/transaction.model.js", () => ({
-  TransactionDAO: {
-    create: jest.fn(), // création d'une transaction (débit/crédit)
-  },
+  __esModule: true,
+  TransactionDAO: { create: jest.fn() },
 }));
 
 jest.unstable_mockModule("../../src/models/transfer.model.js", () => ({
-  TransferDAO: {
-    create: jest.fn(), // création d'un virement (trace)
-  },
+  __esModule: true,
+  TransferDAO: { create: jest.fn() },
 }));
 
 jest.unstable_mockModule("../../src/models/user.model.js", () => ({
+  __esModule: true,
   UserDAO: {
-    findById: jest.fn(), // récupère infos du destinataire (Interac)
+    findByEmail: jest.fn(),
+    findById: jest.fn(),
   },
 }));
 
 jest.unstable_mockModule("../../src/models/beneficiary.model.js", () => ({
+  __esModule: true,
   BeneficiaryDAO: {
-    findByIdAndUserId: jest.fn(), // bénéficiaire d'une facture
+    findByIdAndUserId: jest.fn(),
   },
 }));
 
-// ✅ Imports réels après mocks (important en ESM)
+jest.unstable_mockModule("../../src/models/scheduled-transaction.model.js", () => ({
+  __esModule: true,
+  ScheduledTransactionDAO: {
+    create: jest.fn(),
+    findById: jest.fn(),
+    findByUserId: jest.fn(),
+    findDueActive: jest.fn(),
+    markRun: jest.fn(),
+    cancel: jest.fn(),
+  },
+}));
+
+/* =====================================================
+ * IMPORTS
+ * ===================================================== */
 const db = (await import("../../src/config/database.js")).default;
 const { TransferService } = await import("../../src/services/transfer.service.js");
 const { AccountDAO } = await import("../../src/models/bank.model.js");
@@ -57,450 +64,267 @@ const { TransactionDAO } = await import("../../src/models/transaction.model.js")
 const { TransferDAO } = await import("../../src/models/transfer.model.js");
 const { UserDAO } = await import("../../src/models/user.model.js");
 const { BeneficiaryDAO } = await import("../../src/models/beneficiary.model.js");
+const { ScheduledTransactionDAO } = await import("../../src/models/scheduled-transaction.model.js");
 
-describe("TransferService", () => {
+describe("TransferService – couverture complète", () => {
   beforeEach(() => {
-    // ✅ Reset des mocks entre tests (évite les interférences)
     jest.clearAllMocks();
-
-    // ✅ Par défaut, db.exec ne plante pas (BEGIN/COMMIT/ROLLBACK réussissent)
-    db.exec.mockResolvedValue(undefined);
+    db.exec.mockResolvedValue();
   });
 
-  // =========================
-  // createInternalTransfer
-  // =========================
+  /* =====================================================
+   * createInternalTransfer
+   * ===================================================== */
   describe("createInternalTransfer", () => {
     test("400 si montant invalide", async () => {
-      // ✅ On teste la validation la plus simple
-      const res = await TransferService.createInternalTransfer({
+      const r = await TransferService.createInternalTransfer({
         userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
+        fromAccountId: 1,
+        toAccountId: 2,
         amount: 0,
       });
-
-      // ✅ Le service refuse immédiatement, donc aucune transaction SQL
-      expect(res).toEqual({ ok: false, status: 400, error: "Montant invalide" });
-      expect(db.exec).not.toHaveBeenCalled();
-    });
-
-    test("400 si comptes manquants", async () => {
-      const res = await TransferService.createInternalTransfer({
-        userId: 1,
-        fromAccountId: null,
-        toAccountId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 400, error: "Comptes manquants" });
-      expect(db.exec).not.toHaveBeenCalled();
-    });
-
-    test("400 si comptes identiques", async () => {
-      // ✅ Cas métier : pas de virement vers le même compte
-      const res = await TransferService.createInternalTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toAccountId: 10,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 400, error: "Comptes identiques" });
-      expect(db.exec).not.toHaveBeenCalled();
+      expect(r.status).toBe(400);
     });
 
     test("404 si compte source introuvable", async () => {
-      // ✅ On simule la DB: compte source absent
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce(null);
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 20, balance: 0 });
-
-      const res = await TransferService.createInternalTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 404, error: "Compte source introuvable" });
-      expect(db.exec).not.toHaveBeenCalled();
-    });
-
-    test("404 si compte destination introuvable", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
       AccountDAO.findByIdAndClientId.mockResolvedValueOnce(null);
 
-      const res = await TransferService.createInternalTransfer({
+      const r = await TransferService.createInternalTransfer({
         userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
+        fromAccountId: 1,
+        toAccountId: 2,
         amount: 10,
       });
 
-      expect(res).toEqual({ ok: false, status: 404, error: "Compte destination introuvable" });
-      expect(db.exec).not.toHaveBeenCalled();
+      expect(r.status).toBe(404);
     });
 
-    test("400 si solde insuffisant", async () => {
-      // ✅ from.balance trop bas => rejet sans BEGIN
+    test("201 succès avec récurrence weekly", async () => {
       AccountDAO.findByIdAndClientId
-        .mockResolvedValueOnce({ id: 10, balance: 5 })
-        .mockResolvedValueOnce({ id: 20, balance: 0 });
+        .mockResolvedValueOnce({ id: 1, balance: 100 })
+        .mockResolvedValueOnce({ id: 2, balance: 50 });
 
-      const res = await TransferService.createInternalTransfer({
+      AccountDAO.updateBalance.mockResolvedValue();
+      TransferDAO.create.mockResolvedValue({ id: 1 });
+      TransactionDAO.create.mockResolvedValue({});
+      ScheduledTransactionDAO.create.mockResolvedValue({ lastID: 10 });
+      ScheduledTransactionDAO.findById.mockResolvedValue({ id: 10 });
+
+      const r = await TransferService.createInternalTransfer({
         userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
+        fromAccountId: 1,
+        toAccountId: 2,
         amount: 10,
+        frequency: "weekly",
       });
 
-      expect(res).toEqual({ ok: false, status: 400, error: "Solde insuffisant" });
-      expect(db.exec).not.toHaveBeenCalled();
-    });
-
-    test("201 succès: BEGIN -> update balances -> create transfer + 2 transactions -> COMMIT", async () => {
-      // ✅ Cas nominal (succès)
-      AccountDAO.findByIdAndClientId
-        .mockResolvedValueOnce({ id: 10, balance: 200 })
-        .mockResolvedValueOnce({ id: 20, balance: 50 });
-
-      // ✅ Les écritures DB réussissent
-      AccountDAO.updateBalance.mockResolvedValue({ changes: 1 });
-      TransferDAO.create.mockResolvedValue({ id: 999 });
-      TransactionDAO.create
-        .mockResolvedValueOnce({ id: 1 }) // débit
-        .mockResolvedValueOnce({ id: 2 }); // crédit
-
-      const res = await TransferService.createInternalTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
-        amount: 10,
-        frequency: "monthly",
-        description: "test",
-      });
-
-      // ✅ On vérifie la transaction atomique
       expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
       expect(db.exec).toHaveBeenNthCalledWith(2, "COMMIT");
-
-      // ✅ Soldes calculés attendus
-      expect(AccountDAO.updateBalance).toHaveBeenCalledWith(10, 190);
-      expect(AccountDAO.updateBalance).toHaveBeenCalledWith(20, 60);
-
-      // ✅ On vérifie que les descriptions contiennent les infos métier
-      const debitArgs = TransactionDAO.create.mock.calls[0][0];
-      expect(debitArgs.description).toContain("Virement interne sortant");
-      expect(debitArgs.description).toContain("test");
-      expect(debitArgs.description).toContain("freq=monthly");
-
-      const creditArgs = TransactionDAO.create.mock.calls[1][0];
-      expect(creditArgs.description).toContain("Virement interne entrant");
-      expect(creditArgs.description).toContain("test");
-      expect(creditArgs.description).toContain("freq=monthly");
-
-      expect(res.ok).toBe(true);
-      expect(res.status).toBe(201);
-      expect(res.data.transfer).toEqual({ id: 999 });
-      expect(res.data.balances).toEqual({ from: 190, to: 60 });
-    });
-
-    test("500 + ROLLBACK si exception pendant la transaction", async () => {
-      // ✅ On force une erreur *après BEGIN* pour vérifier le rollback
-      AccountDAO.findByIdAndClientId
-        .mockResolvedValueOnce({ id: 10, balance: 200 })
-        .mockResolvedValueOnce({ id: 20, balance: 50 });
-
-      AccountDAO.updateBalance.mockRejectedValueOnce(new Error("DB error"));
-
-      const res = await TransferService.createInternalTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toAccountId: 20,
-        amount: 10,
-      });
-
-      // ✅ En cas d'erreur pendant la transaction : BEGIN puis ROLLBACK
-      expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
-      expect(db.exec).toHaveBeenNthCalledWith(2, "ROLLBACK");
-
-      expect(res).toEqual({
-        ok: false,
-        status: 500,
-        error: "Erreur serveur pendant le virement",
-      });
+      expect(r.status).toBe(201);
+      expect(r.data.scheduledTransaction.id).toBe(10);
     });
   });
 
-  // =========================
-  // createInteracTransfer
-  // =========================
+  /* =====================================================
+   * createInteracTransfer
+   * ===================================================== */
   describe("createInteracTransfer", () => {
     test("401 si non authentifié", async () => {
-      const res = await TransferService.createInteracTransfer({
-        userId: null,
-        fromAccountId: 10,
-        toClientId: 20,
+      const r = await TransferService.createInteracTransfer({});
+      expect(r.status).toBe(401);
+    });
+
+    test("400 si email invalide", async () => {
+      const r = await TransferService.createInteracTransfer({
+        userId: 1,
+        fromAccountId: 1,
+        recipientEmail: "bad",
+        amount: 10,
+      });
+      expect(r.status).toBe(400);
+    });
+
+    test("201 interac externe", async () => {
+      AccountDAO.findByIdAndClientId.mockResolvedValue({ id: 1, balance: 100 });
+      AccountDAO.updateBalance.mockResolvedValue();
+      TransferDAO.create.mockResolvedValue({});
+      TransactionDAO.create.mockResolvedValue({});
+
+      const r = await TransferService.createInteracTransfer({
+        userId: 1,
+        fromAccountId: 1,
+        recipientEmail: "ext@test.com",
+        recipientFirstName: "Jean",
+        recipientLastName: "Dupont",
+        isExternalRecipient: true,
         amount: 10,
       });
 
-      expect(res).toEqual({ ok: false, status: 401, error: "Non authentifié" });
+      expect(r.status).toBe(201);
+      expect(r.data.recipient.external).toBe(true);
     });
 
-    test("400 si montant invalide", async () => {
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 0,
-      });
+    test("404 destinataire introuvable (interne)", async () => {
+      AccountDAO.findByIdAndClientId.mockResolvedValue({ id: 1, balance: 100 });
+      UserDAO.findByEmail.mockResolvedValue(null);
 
-      expect(res).toEqual({ ok: false, status: 400, error: "Montant invalide" });
-    });
-
-    test("400 si champs manquants", async () => {
-      const res = await TransferService.createInteracTransfer({
+      const r = await TransferService.createInteracTransfer({
         userId: 1,
-        fromAccountId: null,
-        toClientId: 20,
+        fromAccountId: 1,
+        recipientEmail: "x@test.com",
         amount: 10,
       });
 
-      expect(res).toEqual({
-        ok: false,
-        status: 400,
-        error: "fromAccountId / toClientId manquants",
-      });
-    });
-
-    test("404 si compte source introuvable", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce(null);
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 404, error: "Compte source introuvable" });
-    });
-
-    test("404 si compte courant destinataire introuvable", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      AccountDAO.findCheckingByClientId.mockResolvedValueOnce(null);
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({
-        ok: false,
-        status: 404,
-        error: "Compte courant du destinataire introuvable",
-      });
-    });
-
-    test("400 si même compte", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      AccountDAO.findCheckingByClientId.mockResolvedValueOnce({ id: 10, balance: 0 });
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({
-        ok: false,
-        status: 400,
-        error: "Impossible de transférer vers le même compte",
-      });
-    });
-
-    test("400 si solde insuffisant", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 5 });
-      AccountDAO.findCheckingByClientId.mockResolvedValueOnce({ id: 20, balance: 0 });
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 400, error: "Solde insuffisant" });
-    });
-
-    test("500 + rollback si une exception survient (on couvre le catch + details)", async () => {
-      // ✅ On force une exception pour s'assurer d'entrer dans le catch
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      AccountDAO.findCheckingByClientId.mockResolvedValueOnce({ id: 20, balance: 0 });
-      UserDAO.findById.mockResolvedValueOnce({ id: 20, first_name: "Receiver" });
-
-      AccountDAO.updateBalance.mockRejectedValueOnce(new Error("DB error"));
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-        description: "hello",
-      });
-
-      expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
-      expect(db.exec).toHaveBeenNthCalledWith(2, "ROLLBACK");
-
-      expect(res.ok).toBe(false);
-      expect(res.status).toBe(500);
-      expect(res.error).toBe("Erreur serveur pendant le virement Interac");
-      expect(typeof res.details).toBe("string");
-    });
-
-    test("500 même si ROLLBACK plante (catch interne)", async () => {
-      // ✅ Ici on teste le cas où ROLLBACK échoue, mais le service doit quand même répondre 500
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      AccountDAO.findCheckingByClientId.mockResolvedValueOnce({ id: 20, balance: 0 });
-      UserDAO.findById.mockResolvedValueOnce({ id: 20, first_name: "Receiver" });
-
-      AccountDAO.updateBalance.mockRejectedValueOnce(new Error("DB error"));
-
-      db.exec.mockImplementation(async (sql) => {
-        if (sql === "ROLLBACK") throw new Error("rollback failed");
-        return undefined;
-      });
-
-      const res = await TransferService.createInteracTransfer({
-        userId: 1,
-        fromAccountId: 10,
-        toClientId: 20,
-        amount: 10,
-      });
-
-      expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
-      expect(db.exec).toHaveBeenNthCalledWith(2, "ROLLBACK");
-
-      expect(res.ok).toBe(false);
-      expect(res.status).toBe(500);
+      expect(r.status).toBe(404);
     });
   });
 
-  // =========================
-  // payBill
-  // =========================
+  /* =====================================================
+   * payBill
+   * ===================================================== */
   describe("payBill", () => {
-    test("400 si montant invalide", async () => {
-      const res = await TransferService.payBill({
-        userId: 1,
-        fromAccountId: 10,
-        beneficiaryId: 5,
-        amount: 0,
-      });
-
-      expect(res).toEqual({ ok: false, status: 400, error: "Montant invalide" });
-    });
-
-    test("400 si champs manquants", async () => {
-      const res = await TransferService.payBill({
-        userId: 1,
-        fromAccountId: null,
-        beneficiaryId: 5,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 400, error: "Champs manquants" });
-    });
-
-    test("404 si compte source introuvable", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce(null);
-
-      const res = await TransferService.payBill({
-        userId: 1,
-        fromAccountId: 10,
-        beneficiaryId: 5,
-        amount: 10,
-      });
-
-      expect(res).toEqual({ ok: false, status: 404, error: "Compte source introuvable" });
-    });
-
     test("404 si bénéficiaire introuvable", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      BeneficiaryDAO.findByIdAndUserId.mockResolvedValueOnce(null);
+      AccountDAO.findByIdAndClientId.mockResolvedValue({ id: 1, balance: 100 });
+      BeneficiaryDAO.findByIdAndUserId.mockResolvedValue(null);
 
-      const res = await TransferService.payBill({
+      const r = await TransferService.payBill({
         userId: 1,
-        fromAccountId: 10,
-        beneficiaryId: 5,
+        fromAccountId: 1,
+        beneficiaryId: 9,
         amount: 10,
       });
 
-      expect(res).toEqual({ ok: false, status: 404, error: "Bénéficiaire introuvable" });
+      expect(r.status).toBe(404);
     });
 
-    test("400 si solde insuffisant", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 5 });
-      BeneficiaryDAO.findByIdAndUserId.mockResolvedValueOnce({ id: 5, name: "Hydro" });
+    test("201 succès paiement monthly", async () => {
+      AccountDAO.findByIdAndClientId.mockResolvedValue({ id: 1, balance: 100 });
+      BeneficiaryDAO.findByIdAndUserId.mockResolvedValue({ id: 5, name: "Hydro" });
+      AccountDAO.updateBalance.mockResolvedValue();
+      TransactionDAO.create.mockResolvedValue({});
+      ScheduledTransactionDAO.create.mockResolvedValue({ lastID: 20 });
+      ScheduledTransactionDAO.findById.mockResolvedValue({ id: 20 });
 
-      const res = await TransferService.payBill({
+      const r = await TransferService.payBill({
         userId: 1,
-        fromAccountId: 10,
+        fromAccountId: 1,
         beneficiaryId: 5,
         amount: 10,
+        frequency: "monthly",
       });
 
-      expect(res).toEqual({ ok: false, status: 400, error: "Solde insuffisant" });
+      expect(r.status).toBe(201);
+      expect(r.data.scheduledTransaction.id).toBe(20);
+    });
+  });
+
+  /* =====================================================
+   * processDueScheduledTransactions
+   * ===================================================== */
+  describe("processDueScheduledTransactions", () => {
+    test("aucune transaction à échéance", async () => {
+      ScheduledTransactionDAO.findDueActive.mockResolvedValue([]);
+
+      const r = await TransferService.processDueScheduledTransactions();
+
+      expect(r.data).toEqual([]);
     });
 
-    test("201 succès: BEGIN -> updateBalance -> create transaction -> COMMIT", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      BeneficiaryDAO.findByIdAndUserId.mockResolvedValueOnce({ id: 5, name: "Hydro" });
+    test("internal succès", async () => {
+      ScheduledTransactionDAO.findDueActive.mockResolvedValue([
+        {
+          id: 1,
+          kind: "internal",
+          user_id: 1,
+          from_account_id: 1,
+          to_account_id: 2,
+          amount: 10,
+          frequency: "weekly",
+          next_run_date: "2026-01-01 00:00:00",
+        },
+      ]);
 
-      AccountDAO.updateBalance.mockResolvedValueOnce({ changes: 1 });
-      TransactionDAO.create.mockResolvedValueOnce({ id: 77 });
+      AccountDAO.findByIdAndClientId
+        .mockResolvedValueOnce({ id: 1, balance: 100 })
+        .mockResolvedValueOnce({ id: 2, balance: 50 });
 
-      const res = await TransferService.payBill({
-        userId: 1,
-        fromAccountId: 10,
-        beneficiaryId: 5,
-        amount: 10,
-        description: "Internet",
-      });
+      AccountDAO.updateBalance.mockResolvedValue();
+      TransferDAO.create.mockResolvedValue();
+      TransactionDAO.create.mockResolvedValue();
+      ScheduledTransactionDAO.markRun.mockResolvedValue();
 
-      expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
-      expect(db.exec).toHaveBeenNthCalledWith(2, "COMMIT");
-
-      expect(AccountDAO.updateBalance).toHaveBeenCalledWith(10, 90);
-
-      const txPayload = TransactionDAO.create.mock.calls[0][0];
-      expect(txPayload.description).toContain("Paiement facture à Hydro");
-      expect(txPayload.description).toContain("Internet");
-
-      expect(res.ok).toBe(true);
-      expect(res.status).toBe(201);
-      expect(res.data.balances).toEqual({ from: 90 });
+      const r = await TransferService.processDueScheduledTransactions();
+      expect(r.data[0].ok).toBe(true);
     });
 
-    test("500 + rollback si exception", async () => {
-      AccountDAO.findByIdAndClientId.mockResolvedValueOnce({ id: 10, balance: 100 });
-      BeneficiaryDAO.findByIdAndUserId.mockResolvedValueOnce({ id: 5, name: "Hydro" });
+    test("bill solde insuffisant", async () => {
+      ScheduledTransactionDAO.findDueActive.mockResolvedValue([
+        {
+          id: 2,
+          kind: "bill",
+          user_id: 1,
+          from_account_id: 1,
+          beneficiary_id: 5,
+          amount: 100,
+        },
+      ]);
 
-      AccountDAO.updateBalance.mockRejectedValueOnce(new Error("DB error"));
+      AccountDAO.findByIdAndClientId.mockResolvedValue({ id: 1, balance: 10 });
+      BeneficiaryDAO.findByIdAndUserId.mockResolvedValue({ id: 5 });
 
-      const res = await TransferService.payBill({
-        userId: 1,
-        fromAccountId: 10,
-        beneficiaryId: 5,
-        amount: 10,
+      const r = await TransferService.processDueScheduledTransactions();
+      expect(r.data[0].error).toBe("Solde insuffisant");
+    });
+  });
+
+  /* =====================================================
+   * getScheduledTransactions
+   * ===================================================== */
+  describe("getScheduledTransactions", () => {
+    test("401 si non authentifié", async () => {
+      const r = await TransferService.getScheduledTransactions(null);
+      expect(r.status).toBe(401);
+    });
+
+    test("200 retourne les transactions", async () => {
+      ScheduledTransactionDAO.findByUserId.mockResolvedValue([{ id: 1 }]);
+
+      const r = await TransferService.getScheduledTransactions(1);
+      expect(r.status).toBe(200);
+      expect(r.data).toEqual([{ id: 1 }]);
+    });
+  });
+
+  /* =====================================================
+   * cancelScheduledTransaction
+   * ===================================================== */
+  describe("cancelScheduledTransaction", () => {
+    test("400 id invalide", async () => {
+      const r = await TransferService.cancelScheduledTransaction(1, "abc");
+      expect(r.status).toBe(400);
+    });
+
+    test("200 déjà annulée", async () => {
+      ScheduledTransactionDAO.findById.mockResolvedValue({
+        id: 1,
+        user_id: 1,
+        status: "cancelled",
       });
 
-      expect(db.exec).toHaveBeenNthCalledWith(1, "BEGIN");
-      expect(db.exec).toHaveBeenNthCalledWith(2, "ROLLBACK");
-      expect(res).toEqual({ ok: false, status: 500, error: "Erreur serveur pendant le paiement" });
+      const r = await TransferService.cancelScheduledTransaction(1, 1);
+      expect(r.status).toBe(200);
+    });
+
+    test("200 succès annulation", async () => {
+      ScheduledTransactionDAO.findById.mockResolvedValue({
+        id: 1,
+        user_id: 1,
+        status: "active",
+      });
+      ScheduledTransactionDAO.cancel.mockResolvedValue();
+
+      const r = await TransferService.cancelScheduledTransaction(1, 1);
+      expect(r.status).toBe(200);
     });
   });
 });

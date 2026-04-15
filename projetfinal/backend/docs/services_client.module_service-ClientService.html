@@ -706,11 +706,41 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Création réussie d'un clientconst result = await ClientService.createClientWithDefaultAccounts({  first_name: "Jean",  last_name: "Dupont",  email: "jean.dupont@email.com",  address: "123 rue Principale",  city: "Montréal",  state: "QC",  postal_code: "H1H 1H1",  date_of_birth: "1990-01-01",  password: "Password123!" // optionnel});if (result.ok) {  console.log(result.data.message); // "Client created + 3 accounts created"  console.log(`Client ID: ${result.data.userId}`);} else {  console.log(`Erreur ${result.status}: ${result.error}`);}</code></pre>
+    <pre class="prettyprint"><code>// Création réussie d'un client
+const result = await ClientService.createClientWithDefaultAccounts({
+  first_name: "Jean",
+  last_name: "Dupont",
+  email: "jean.dupont@email.com",
+  address: "123 rue Principale",
+  city: "Montréal",
+  state: "QC",
+  postal_code: "H1H 1H1",
+  date_of_birth: "1990-01-01",
+  password: "Password123!" // optionnel
+});
 
-    <pre class="prettyprint"><code>// Création avec mot de passe généré automatiquementconst result = await ClientService.createClientWithDefaultAccounts({  first_name: "Marie",  last_name: "Lambert",  email: "marie@email.com"  // password non fourni → généré automatiquement});</code></pre>
+if (result.ok) {
+  console.log(result.data.message); // "Client created + 3 accounts created"
+  console.log(`Client ID: ${result.data.userId}`);
+} else {
+  console.log(`Erreur ${result.status}: ${result.error}`);
+}</code></pre>
 
-    <pre class="prettyprint"><code>// Erreur: email déjà existantconst result = await ClientService.createClientWithDefaultAccounts({  first_name: "Pierre",  last_name: "Tremblay",  email: "existant@email.com" // déjà en BD});// result = { ok: false, status: 409, error: "Email already exists" }</code></pre>
+    <pre class="prettyprint"><code>// Création avec mot de passe généré automatiquement
+const result = await ClientService.createClientWithDefaultAccounts({
+  first_name: "Marie",
+  last_name: "Lambert",
+  email: "marie@email.com"
+  // password non fourni → généré automatiquement
+});</code></pre>
+
+    <pre class="prettyprint"><code>// Erreur: email déjà existant
+const result = await ClientService.createClientWithDefaultAccounts({
+  first_name: "Pierre",
+  last_name: "Tremblay",
+  email: "existant@email.com" // déjà en BD
+});
+// result = { ok: false, status: 409, error: "Email already exists" }</code></pre>
 
 
 
@@ -954,9 +984,15 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Client trouvéconst result = await ClientService.get(123);if (result.ok) {  console.log(result.data.first_name, result.data.last_name);}</code></pre>
+    <pre class="prettyprint"><code>// Client trouvé
+const result = await ClientService.get(123);
+if (result.ok) {
+  console.log(result.data.first_name, result.data.last_name);
+}</code></pre>
 
-    <pre class="prettyprint"><code>// Client non trouvéconst result = await ClientService.get(999);// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
+    <pre class="prettyprint"><code>// Client non trouvé
+const result = await ClientService.get(999);
+// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
 
 
 
@@ -1149,7 +1185,17 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Example</h5>
     
-    <pre class="prettyprint"><code>// Utilisation dans un contrôleurtry {  const client = await ClientService.getCurrentClient(req.user.id);  res.json(client);} catch (error) {  if (error.status === 404) {    res.status(404).json({ error: error.message });  } else {    res.status(500).json({ error: "Internal error" });  }}</code></pre>
+    <pre class="prettyprint"><code>// Utilisation dans un contrôleur
+try {
+  const client = await ClientService.getCurrentClient(req.user.id);
+  res.json(client);
+} catch (error) {
+  if (error.status === 404) {
+    res.status(404).json({ error: error.message });
+  } else {
+    res.status(500).json({ error: "Internal error" });
+  }
+}</code></pre>
 
 
 
@@ -1493,9 +1539,12 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Liste des 50 premiers clientsconst result = await ClientService.list({});</code></pre>
+    <pre class="prettyprint"><code>// Liste des 50 premiers clients
+const result = await ClientService.list({});</code></pre>
 
-    <pre class="prettyprint"><code>// Liste avec pagination personnaliséeconst result = await ClientService.list({ limit: 20, offset: 40 });console.log(`Clients:`, result.data);</code></pre>
+    <pre class="prettyprint"><code>// Liste avec pagination personnalisée
+const result = await ClientService.list({ limit: 20, offset: 40 });
+console.log(`Clients:`, result.data);</code></pre>
 
 
 
@@ -1739,9 +1788,13 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Suppression réussieconst result = await ClientService.remove(123);// result = { ok: true, status: 200, data: { message: "Deleted" } }</code></pre>
+    <pre class="prettyprint"><code>// Suppression réussie
+const result = await ClientService.remove(123);
+// result = { ok: true, status: 200, data: { message: "Deleted" } }</code></pre>
 
-    <pre class="prettyprint"><code>// Client non trouvéconst result = await ClientService.remove(999);// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
+    <pre class="prettyprint"><code>// Client non trouvé
+const result = await ClientService.remove(999);
+// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
 
 
 
@@ -2300,11 +2353,23 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 
     <h5>Examples</h5>
     
-    <pre class="prettyprint"><code>// Mise à jour réussieconst result = await ClientService.update(123, {  first_name: "Jean-Pierre",  address: "456 Nouvelle Rue",  phone: "514-999-9999"});// result = { ok: true, status: 200, data: { message: "Updated" } }</code></pre>
+    <pre class="prettyprint"><code>// Mise à jour réussie
+const result = await ClientService.update(123, {
+  first_name: "Jean-Pierre",
+  address: "456 Nouvelle Rue",
+  phone: "514-999-9999"
+});
+// result = { ok: true, status: 200, data: { message: "Updated" } }</code></pre>
 
-    <pre class="prettyprint"><code>// Changement d'email avec conflitconst result = await ClientService.update(123, {  email: "nouveau@email.com" // déjà utilisé});// result = { ok: false, status: 409, error: "Email already used" }</code></pre>
+    <pre class="prettyprint"><code>// Changement d'email avec conflit
+const result = await ClientService.update(123, {
+  email: "nouveau@email.com" // déjà utilisé
+});
+// result = { ok: false, status: 409, error: "Email already used" }</code></pre>
 
-    <pre class="prettyprint"><code>// Client non trouvéconst result = await ClientService.update(999, { first_name: "Test" });// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
+    <pre class="prettyprint"><code>// Client non trouvé
+const result = await ClientService.update(999, { first_name: "Test" });
+// result = { ok: false, status: 404, error: "Client not found" }</code></pre>
 
 
 
@@ -2324,13 +2389,13 @@ création avec comptes par défaut, liste, consultation, mise à jour, suppressi
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="controllers_auth.module_controller.html">controllers/auth.controller</a></li><li><a href="controllers_bank.module_controller.html">controllers/bank.controller</a></li><li><a href="controllers_client.module_controller.html">controllers/client.controller</a></li><li><a href="models_bank.module_model.html">models/bank.model</a></li><li><a href="models_beneficiary.module_model.html">models/beneficiary.model</a></li><li><a href="models_client.module_model.html">models/client.model</a></li><li><a href="models_scheduled-transaction.module_model.html">models/scheduled-transaction.model</a></li><li><a href="models_transaction.module_model.html">models/transaction.model</a></li><li><a href="models_transfer.module_model.html">models/transfer.model</a></li><li><a href="models_user.module_model.html">models/user.model</a></li><li><a href="module-authRouter.html">authRouter</a></li><li><a href="module-bankRouter.html">bankRouter</a></li><li><a href="module-clientRouter.html">clientRouter</a></li><li><a href="routes_auth.module_routes.html">routes/auth.routes</a></li><li><a href="routes_bank.module_routes.html">routes/bank.routes</a></li><li><a href="routes_client.module_routes.html">routes/client.routes</a></li><li><a href="services_auth.module_service.html">services/auth.service</a></li><li><a href="services_bank.module_service.html">services/bank.service</a></li><li><a href="services_client.module_service.html">services/client.service</a></li><li><a href="services_transfer.module_service.html">services/transfer.service</a></li></ul><h3>Namespaces</h3><ul><li><a href="controllers_bank.module_controller-BankController.html">controllers/bank.controller~BankController</a></li><li><a href="models_bank.module_model-AccountDAO.html">models/bank.model~AccountDAO</a></li><li><a href="models_client.module_model-ClientDAO.html">models/client.model~ClientDAO</a></li><li><a href="models_user.module_model-UserDAO.html">models/user.model~UserDAO</a></li><li><a href="routes_auth.module_routes-authRouter.html">routes/auth.routes~authRouter</a></li><li><a href="routes_bank.module_routes-bankRouter.html">routes/bank.routes~bankRouter</a></li><li><a href="routes_client.module_routes-clientRouter.html">routes/client.routes~clientRouter</a></li><li><a href="services_auth.module_service-AuthService.html">services/auth.service~AuthService</a></li><li><a href="services_bank.module_service-BankService.html">services/bank.service~BankService</a></li><li><a href="services_client.module_service-ClientService.html">services/client.service~ClientService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CheckDepositDAO">CheckDepositDAO</a></li><li><a href="global.html#TransferController">TransferController</a></li><li><a href="global.html#cancelScheduledTransaction">cancelScheduledTransaction</a></li><li><a href="global.html#createInteracTransfer">createInteracTransfer</a></li><li><a href="global.html#createInternalTransfer">createInternalTransfer</a></li><li><a href="global.html#extractAmountFromQrCode">extractAmountFromQrCode</a></li><li><a href="global.html#getScheduledTransactions">getScheduledTransactions</a></li><li><a href="global.html#payBill">payBill</a></li><li><a href="global.html#processDueScheduledTransactions">processDueScheduledTransactions</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 14 2026 14:06:55 GMT-0400 (heure avancée de l’Est)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Apr 15 2026 12:25:22 GMT-0400 (heure d’été de l’Est nord-américain)
 </footer>
 
 <script> prettyPrint(); </script>

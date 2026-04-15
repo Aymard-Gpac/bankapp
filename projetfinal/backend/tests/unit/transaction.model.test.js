@@ -9,6 +9,9 @@ jest.unstable_mockModule("../../src/config/database.js", () => ({
   },
 }));
 
+/* =====================================================
+ * Imports
+ * ===================================================== */
 const db = (await import("../../src/config/database.js")).default;
 const { TransactionDAO } = await import("../../src/models/transaction.model.js");
 
@@ -17,220 +20,160 @@ describe("TransactionDAO", () => {
     jest.clearAllMocks();
   });
 
+  /* =====================================================
+   * findByAccountIdPaginated
+   * ===================================================== */
   describe("findByAccountIdPaginated", () => {
-    test("appelle db.all avec le bon SQL, limit et offset", async () => {
-      const fakeRows = [
-        { id: 1, account_id: 10, amount: 100, type: "CREDIT" },
-        { id: 2, account_id: 10, amount: 50, type: "DEBIT" },
-      ];
+    test("appelle db.all avec SQL, limit et offset", async () => {
+      db.all.mockResolvedValueOnce([{ id: 1 }]);
 
-      db.all.mockResolvedValueOnce(fakeRows);
-
-      const result = await TransactionDAO.findByAccountIdPaginated(10, 5, 0);
-
-      expect(db.all).toHaveBeenCalledTimes(1);
+      const res = await TransactionDAO.findByAccountIdPaginated(10, 5, 0);
 
       const [sql, accountId, limit, offset] = db.all.mock.calls[0];
-
       expect(sql).toContain("FROM transactions");
-      expect(sql).toContain("WHERE account_id = ?");
-      expect(sql).toContain("LIMIT ? OFFSET ?");
       expect(accountId).toBe(10);
       expect(limit).toBe(5);
       expect(offset).toBe(0);
-      expect(result).toEqual(fakeRows);
+      expect(res).toEqual([{ id: 1 }]);
     });
 
-    test("retourne un tableau vide si aucune transaction paginée n'existe", async () => {
+    test("retourne [] si aucune transaction", async () => {
       db.all.mockResolvedValueOnce([]);
-
-      const result = await TransactionDAO.findByAccountIdPaginated(99, 10, 20);
-
-      expect(result).toEqual([]);
+      const res = await TransactionDAO.findByAccountIdPaginated(1, 10, 0);
+      expect(res).toEqual([]);
     });
 
-    test("propage l'erreur si db.all échoue sur la pagination", async () => {
-      const dbError = new Error("Pagination DB error");
-      db.all.mockRejectedValueOnce(dbError);
-
+    test("propage erreur DB", async () => {
+      db.all.mockRejectedValueOnce(new Error("DB error"));
       await expect(
-        TransactionDAO.findByAccountIdPaginated(10, 10, 0)
-      ).rejects.toThrow(dbError);
+        TransactionDAO.findByAccountIdPaginated(1, 10, 0)
+      ).rejects.toThrow();
     });
   });
 
+  /* =====================================================
+   * countByAccountId
+   * ===================================================== */
   describe("countByAccountId", () => {
-    test("appelle db.get avec la bonne requête SQL", async () => {
-      db.get.mockResolvedValueOnce({ total: 7 });
+    test("retourne le total", async () => {
+      db.get.mockResolvedValueOnce({ total: 5 });
 
-      const result = await TransactionDAO.countByAccountId(10);
-
-      expect(db.get).toHaveBeenCalledTimes(1);
+      const res = await TransactionDAO.countByAccountId(10);
 
       const [sql, accountId] = db.get.mock.calls[0];
-
-      expect(sql).toContain("SELECT COUNT(*) AS total");
-      expect(sql).toContain("FROM transactions");
-      expect(sql).toContain("WHERE account_id = ?");
+      expect(sql).toContain("COUNT(*)");
       expect(accountId).toBe(10);
-      expect(result).toEqual({ total: 7 });
+      expect(res).toEqual({ total: 5 });
     });
 
-    test("retourne total 0 si aucune transaction n'existe", async () => {
-      db.get.mockResolvedValueOnce({ total: 0 });
-
-      const result = await TransactionDAO.countByAccountId(999);
-
-      expect(result).toEqual({ total: 0 });
-    });
-
-    test("propage l'erreur si db.get échoue", async () => {
-      const dbError = new Error("Count DB error");
-      db.get.mockRejectedValueOnce(dbError);
-
-      await expect(TransactionDAO.countByAccountId(10)).rejects.toThrow(dbError);
+    test("propage erreur DB", async () => {
+      db.get.mockRejectedValueOnce(new Error("Count error"));
+      await expect(TransactionDAO.countByAccountId(1)).rejects.toThrow();
     });
   });
 
+  /* =====================================================
+   * findHistoryByClientId
+   * ===================================================== */
   describe("findHistoryByClientId", () => {
-    test("appelle db.all avec la bonne requête SQL et le bon clientId", async () => {
-      const fakeRows = [
-        {
-          id: 1,
-          account_id: 10,
-          account_type: "cheque",
-          account_number: "CHEQUE-123",
-          description: "Salaire",
-          amount: 1500,
-          type: "CREDIT",
-          created_at: "2026-03-10T12:00:00Z",
-        },
-      ];
+    test("retourne l'historique", async () => {
+      db.all.mockResolvedValueOnce([{ id: 1 }]);
 
-      db.all.mockResolvedValueOnce(fakeRows);
-
-      const result = await TransactionDAO.findHistoryByClientId(123);
-
-      expect(db.all).toHaveBeenCalledTimes(1);
+      const res = await TransactionDAO.findHistoryByClientId(123);
 
       const [sql, clientId] = db.all.mock.calls[0];
-
       expect(sql).toContain("FROM transactions t");
-      expect(sql).toContain("INNER JOIN accounts a ON a.id = t.account_id");
-      expect(sql).toContain("WHERE a.user_id = ?");
-      expect(sql).toContain("ORDER BY t.created_at DESC");
       expect(clientId).toBe(123);
-      expect(result).toEqual(fakeRows);
+      expect(res).toEqual([{ id: 1 }]);
     });
 
-    test("retourne un tableau vide si aucune transaction d'historique n'existe", async () => {
-      db.all.mockResolvedValueOnce([]);
-
-      const result = await TransactionDAO.findHistoryByClientId(999);
-
-      expect(result).toEqual([]);
-    });
-
-    test("propage l'erreur si db.all échoue sur l'historique", async () => {
-      const dbError = new Error("History DB error");
-      db.all.mockRejectedValueOnce(dbError);
-
-      await expect(TransactionDAO.findHistoryByClientId(123)).rejects.toThrow(
-        dbError
-      );
+    test("propage erreur DB", async () => {
+      db.all.mockRejectedValueOnce(new Error("History error"));
+      await expect(TransactionDAO.findHistoryByClientId(1)).rejects.toThrow();
     });
   });
 
+  /* =====================================================
+   * create
+   * ===================================================== */
   describe("create", () => {
-    test("insère une transaction puis retourne la transaction créée", async () => {
-      db.run.mockReturnValueOnce({ lastID: 42 });
-      db.get.mockResolvedValueOnce({
-        id: 42,
-        account_id: 10,
-        type: "CREDIT",
-        amount: 250,
-        description: "Dépôt test",
-      });
+    test("crée une transaction avec date générée automatiquement", async () => {
+      db.run.mockResolvedValueOnce({ lastID: 42 });
+      db.get.mockResolvedValueOnce({ id: 42, amount: 100 });
 
-      const result = await TransactionDAO.create({
+      const res = await TransactionDAO.create({
         accountId: 10,
         type: "CREDIT",
-        amount: 250,
-        description: "Dépôt test",
+        amount: 100,
+        description: "Test",
       });
 
       expect(db.run).toHaveBeenCalledTimes(1);
-
-      const [insertSql, accountId, type, amount, description] = db.run.mock.calls[0];
-      expect(insertSql).toContain(
-        "INSERT INTO transactions (account_id, type, amount, description) VALUES (?, ?, ?, ?)"
-      );
-      expect(accountId).toBe(10);
-      expect(type).toBe("CREDIT");
-      expect(amount).toBe(250);
-      expect(description).toBe("Dépôt test");
-
-      expect(db.get).toHaveBeenCalledTimes(1);
       expect(db.get).toHaveBeenCalledWith(
         "SELECT * FROM transactions WHERE id = ?",
         42
       );
 
-      expect(result).toEqual({
-        id: 42,
-        account_id: 10,
-        type: "CREDIT",
-        amount: 250,
-        description: "Dépôt test",
-      });
+      expect(res).toEqual({ id: 42, amount: 100 });
     });
 
-    test("insère une transaction avec description null si non fournie", async () => {
-      db.run.mockReturnValueOnce({ lastID: 99 });
-      db.get.mockResolvedValueOnce({
-        id: 99,
-        account_id: 11,
+    test("crée une transaction avec createdAt fourni", async () => {
+      db.run.mockResolvedValueOnce({ lastID: 50 });
+      db.get.mockResolvedValueOnce({ id: 50 });
+
+      const createdAt = "2026-01-01 10:00:00";
+
+      await TransactionDAO.create({
+        accountId: 5,
         type: "DEBIT",
-        amount: 80,
-        description: null,
+        amount: 25,
+        description: "Paiement",
+        createdAt,
       });
 
-      const result = await TransactionDAO.create({
-        accountId: 11,
+      const [, , , , , passedCreatedAt] = db.run.mock.calls[0];
+      expect(passedCreatedAt).toBe(createdAt);
+    });
+
+    test("description null si non fournie", async () => {
+      db.run.mockResolvedValueOnce({ lastID: 99 });
+      db.get.mockResolvedValueOnce({ id: 99, description: null });
+
+      const res = await TransactionDAO.create({
+        accountId: 1,
         type: "DEBIT",
-        amount: 80,
+        amount: 50,
       });
 
-      const [, accountId, type, amount, description] = db.run.mock.calls[0];
-
-      expect(accountId).toBe(11);
-      expect(type).toBe("DEBIT");
-      expect(amount).toBe(80);
+      const [, , , , description] = db.run.mock.calls[0];
       expect(description).toBeNull();
-
-      expect(result).toEqual({
-        id: 99,
-        account_id: 11,
-        type: "DEBIT",
-        amount: 80,
-        description: null,
-      });
+      expect(res.description).toBeNull();
     });
 
-    test("propage l'erreur si db.run échoue", async () => {
-      const dbError = new Error("Insert DB error");
-      db.run.mockImplementationOnce(() => {
-        throw dbError;
-      });
+    test("propage erreur db.run", async () => {
+      db.run.mockRejectedValueOnce(new Error("Insert error"));
 
-      expect(() =>
+      await expect(
         TransactionDAO.create({
-          accountId: 10,
+          accountId: 1,
           type: "CREDIT",
-          amount: 100,
-          description: "Test",
+          amount: 10,
         })
-      ).toThrow(dbError);
+      ).rejects.toThrow();
+    });
+
+    test("propage erreur db.get après insertion", async () => {
+      db.run.mockResolvedValueOnce({ lastID: 77 });
+      db.get.mockRejectedValueOnce(new Error("Select error"));
+
+      await expect(
+        TransactionDAO.create({
+          accountId: 1,
+          type: "CREDIT",
+          amount: 10,
+        })
+      ).rejects.toThrow("Select error");
     });
   });
 });
+

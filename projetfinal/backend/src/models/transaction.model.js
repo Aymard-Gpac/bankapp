@@ -8,7 +8,7 @@ import db from "../config/database.js";
 
 /**
  * TransactionDAO
- * Couche d'accès aux données (DAO).
+ * Couche d'accès auxx données (DAO).
  * 
  * Responsabilités :
  * - Exécuter uniquement des requêtes SQL
