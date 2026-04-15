@@ -200,15 +200,25 @@ closeAccount(accountId, clientId) {
     );
   },
 
-   findCheckingByClientId(clientId) {
-    return db.get(
-      `SELECT *
-       FROM accounts
-       WHERE user_id = ?
-         AND (type = 'Compte Cheque' OR type LIKE '%Cheque%')
-       ORDER BY id ASC
-       LIMIT 1`,
-      clientId
-    );
-  },
+  findCheckingByClientId(clientId) {
+  return db.get(
+    `SELECT
+       id,
+       user_id,
+       account_number,
+       type,
+       balance,
+       currency,
+       created_at,
+       COALESCE(status, 'active') AS status,
+       closed_at
+     FROM accounts
+     WHERE user_id = ?
+       AND COALESCE(status, 'active') = 'active'
+       AND REPLACE(LOWER(TRIM(type)), 'é', 'e') LIKE '%cheque%'
+     ORDER BY id ASC
+     LIMIT 1`,
+    clientId
+  );
+},
 };

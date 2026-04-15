@@ -122,6 +122,20 @@ export async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (account_id) REFERENCES accounts(id)
     );
+    CREATE TABLE IF NOT EXISTS check_deposits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      account_id INTEGER NOT NULL,
+      image_name TEXT NOT NULL,
+      image_type TEXT NOT NULL,
+      image_size INTEGER NOT NULL,
+      qr_code TEXT NOT NULL,
+      amount REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'validated',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (account_id) REFERENCES accounts(id)
+    );
   `);
 
 /**
